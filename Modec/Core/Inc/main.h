@@ -62,11 +62,14 @@ void Error_Handler(void);
 #define PIR_EXTI_IRQn EXTI0_IRQn
 #define LED_Pin GPIO_PIN_6
 #define LED_GPIO_Port GPIOA
+#define Error_Pin GPIO_PIN_0
+#define Error_GPIO_Port GPIOB
 #define UART_SLEEP_Pin GPIO_PIN_8
 #define UART_SLEEP_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 void FlashLED();
+void IndicateErrorAndReset(void);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

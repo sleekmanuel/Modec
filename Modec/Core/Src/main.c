@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -54,8 +55,11 @@ uint8_t TxData_NoPresence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0A};
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void EnterLowPowerMode(void);
+void SetLowPowerMode(uint8_t enable);
+void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
 void FlashLED(void);
+void IndicateErrorAndReset(void);
+void GracefulShutdown(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -94,8 +98,9 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
-
+  SetLowPowerMode(1);        // Enable low power on startup
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -103,12 +108,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-      // If presence is not detected or timer is inactive, enter low-power mode
-      if (__HAL_TIM_GET_COUNTER(&htim2) == 0)
-      {
-        //  EnterLowPowerMode();
-      }
-
+	  Watchdog_Refresh();    // Periodically refresh the watchdog in the main loop
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -133,7 +133,8 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
@@ -146,7 +147,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+	  Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -160,7 +161,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
-    Error_Handler();
+	  Error_Handler();
   }
 }
 
@@ -190,7 +191,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	 }
         		 lastDebounceTime = currentTime;   /* Update the last debounce time */
 	         }
-	         HAL_PWR_DisableSleepOnExit();   // Exit low-power mode when PIR detects presence
+	         SetLowPowerMode(0);  // Disable low power on presence detection
 	     }
 
 }
@@ -203,9 +204,38 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
 	  HAL_GPIO_WritePin(GPIOA, LED_Pin, RESET);
 
-      HAL_PWR_EnableSleepOnExit();   // Set to enter low-power mode after timer expires
+	  SetLowPowerMode(1);  // Enable low power on no presence
 
   }
+}
+/**
+  * @brief  Flash LED with customizable delay and count
+  * @param  delay_ms: Delay in milliseconds
+  * @param  count: Number of times to toggle LED
+  * @param	PVD: LED to toggle 1 for PVD 0 for error
+  */
+void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
+{
+   if(PVD)
+   {
+		for (uint8_t i = 0; i < count; i++)
+        {
+			HAL_GPIO_TogglePin(GPIOA, LED_Pin);
+			HAL_Delay(delay_ms);
+			HAL_GPIO_TogglePin(GPIOA, LED_Pin);
+			HAL_Delay(delay_ms);
+        }
+   }else
+   {
+
+		 for(uint8_t j = 0; j < count; j++)
+		 {
+		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
+		    HAL_Delay(delay_ms);
+		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
+		 	HAL_Delay(delay_ms);
+		 }
+   }
 }
 
 /**
@@ -213,27 +243,54 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   */
 void FlashLED(void)
 {
-    for(int i = 0; i < 10; i++)
+    ToggleLED(100,5,1); // toggle PVD LED
+}
+
+
+/**
+  * @brief Enter or Exit Low Power (STOP) Mode
+  * @param enable: 1 to enable, 0 to disable
+  */
+void SetLowPowerMode(uint8_t enable)
+{
+    if (enable)
     {
-        HAL_GPIO_TogglePin(GPIOA, LED_Pin);
-        HAL_Delay(100);
-        HAL_GPIO_TogglePin(GPIOA, LED_Pin);
-        HAL_Delay(100);
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+        HAL_SuspendTick();
+        HAL_PWR_EnableSleepOnExit();
+        HAL_PWR_EnterSTOPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+        HAL_ResumeTick();
+        SystemClock_Config();
     }
+    else
+    {
+        HAL_PWR_DisableSleepOnExit();
+    }
+}
+/**
+  * @brief  Graceful Shutdown Procedure
+  */
+void GracefulShutdown(void)
+{
+    // Safely shut down peripherals or save data here before reset
+    HAL_UART_DeInit(&huart1); // Deinitialize UART
+    HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
+    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
+
+    // Optionally store status or error codes in non-volatile memory
+    // HAL_FLASH_Program(...);
+
+    HAL_Delay(500); // Allow time for final tasks
 }
 
 /**
-  * @brief  Enter low-power (STOP) mode.
+  * @brief  Error handler with graceful shutdown and reset
   */
-void EnterLowPowerMode(void)
+void IndicateErrorAndReset(void)
 {
-    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);  // Turn off LED before sleep
-    HAL_SuspendTick();  // Suspend SysTick for power saving
-    HAL_PWR_EnterSTOPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);  // Enter STOP mode
-    HAL_ResumeTick();  // Resume SysTick after wake-up
-    //SystemClock_Config();  // Reconfigure system clock on wake-up
+    GracefulShutdown();
+    NVIC_SystemReset(); // Trigger a system reset
 }
-
 /* USER CODE END 4 */
 
 /**
@@ -245,9 +302,9 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
-  {
-  }
+  //Visual Display in Error mode. Blink LED continuously
+  	 ToggleLED(100, 5, 0); //Toggle Error LED
+	 IndicateErrorAndReset();
   /* USER CODE END Error_Handler_Debug */
 }
 
