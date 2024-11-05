@@ -22,6 +22,7 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
+#include "stm32l4xx_hal_flash.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,6 +37,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define DEBOUNCE_DELAY_MS 1
+#define ERROR_FILE_ADDRESS 0x0803FFFA
+#define ERROR_LINE_ADDRESS 0x0803FFFB
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,6 +53,8 @@ volatile uint32_t lastDebounceTime = 0;
 
 uint8_t TxData_Presence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0F};
 uint8_t TxData_NoPresence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0A};
+volatile uint32_t ErrorFile;
+volatile uint32_t ErrorLine;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,6 +65,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
 void FlashLED(void);
 void IndicateErrorAndReset(void);
 void GracefulShutdown(void);
+void StoreErrorCode(uint32_t code, uint32_t code2);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -257,16 +263,40 @@ void SetLowPowerMode(uint8_t enable)
     {
         HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
         HAL_SuspendTick();
+
+        // Disable Watchdog Refresh in low power mode
+        IWDG_HandleTypeDef hiwdg = hiwdg;  // reference existing IWDG handle
+
+
+       // HAL_IWDG_Stop(&hiwdg); // Stop watchdog
+
         HAL_PWR_EnableSleepOnExit();
         HAL_PWR_EnterSTOPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
+
         HAL_ResumeTick();
         SystemClock_Config();
+
+        // Re-enable Watchdog after exit from low power mode
+       // HAL_IWDG_Start(&hiwdg);
     }
     else
     {
         HAL_PWR_DisableSleepOnExit();
     }
 }
+/**
+ * @brief store error code in flash memory
+ * @param code: code to be stored
+ */
+void StoreErrorCode(uint32_t code1, uint32_t code2)
+{
+    HAL_FLASH_Unlock();  // Unlock Flash for writing
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, ERROR_FILE_ADDRESS, code1);  // Write code to Flash
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, ERROR_LINE_ADDRESS, code2);  // Write code to Flash
+    HAL_FLASH_Lock();    // Lock Flash after writing
+}
+
+
 /**
   * @brief  Graceful Shutdown Procedure
   */
@@ -277,8 +307,9 @@ void GracefulShutdown(void)
     HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
     HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
 
-    // Optionally store status or error codes in non-volatile memory
-    // HAL_FLASH_Program(...);
+    //  store status or error codes in non-volatile memory
+    if (ErrorFile != 0xFFFFFFFF)
+    	StoreErrorCode(ErrorFile, ErrorLine);  // Store error code in Flash
 
     HAL_Delay(500); // Allow time for final tasks
 }
@@ -321,6 +352,8 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+	ErrorFile = file;
+	ErrorLine = line;
 	IndicateErrorAndReset();
   /* USER CODE END 6 */
 }
