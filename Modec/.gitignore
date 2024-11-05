@@ -1,2 +1,10 @@
 /Debug/
+<<<<<<< Upstream, based on origin/master
 /Drivers/
+=======
+.metadata/
+.settings/
+[Rr]elease
+.launch/
+
+>>>>>>> 36dfbf6 gitignore editied
