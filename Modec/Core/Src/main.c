@@ -24,7 +24,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdio.h>
+#include <string.h>
+#include "math.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,6 +39,7 @@
 #define DEBOUNCE_DELAY_MS 1
 #define ERROR_FILE_ADDRESS 0x0803FFFA
 #define ERROR_LINE_ADDRESS 0x0803FFFB
+#define Data_BUFFER_SIZE 9	 // Transmission Buffer size
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -49,11 +52,17 @@
 /* USER CODE BEGIN PV */
 volatile uint32_t lastDebounceTime = 0;
 volatile uint8_t ResetCount = 0;
+volatile uint8_t data_received_flag = 0;  // Flag to indicate data reception
+
 
 uint8_t TxData_Presence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0F};
 uint8_t TxData_NoPresence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0A};
+uint8_t mySerialLow[8];
 volatile uint32_t ErrorFile;
 volatile uint32_t ErrorLine;
+
+uint8_t rx_buffer[Data_BUFFER_SIZE];             // Buffer to store received data
+uint8_t RxData[Data_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,6 +74,9 @@ void FlashLED(void);
 void IndicateErrorAndReset(void);
 void GracefulShutdown(void);
 void StoreErrorCode(uint32_t code, uint32_t code2);
+void enterCommandMode(void);
+void requestSerialNumberLow(void);
+void exitCommandMode(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -105,13 +117,19 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
   //SetLowPowerMode(1);        // Enable low power on startup
+  // enter AT command mode
+  enterCommandMode();
+  //Request and store XBee Serial Number Low
+  requestSerialNumberLow();
+
+  // Exit command mode
+ // exitCommandMode();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -171,6 +189,68 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void enterCommandMode(void)
+{
+    char command_mode[3] = "+++";
+    // Send "+++" to enter AT command mode
+    HAL_UART_Transmit(&huart1, (uint8_t*)command_mode, strlen(command_mode), HAL_MAX_DELAY);
+    HAL_Delay(1000);  // Small delay for XBee to respond
+    // Receive the "OK" response from XBee
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, Data_BUFFER_SIZE);
+}
+
+// Function to request XBee Serial Number Low (ATSL)
+void requestSerialNumberLow(void)
+{
+    char at_command[] = "ATSL\r";  // Command to request Serial Number Low
+    // Send the ATSL command
+    HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
+    // Receive the response (Serial Number Low)
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, Data_BUFFER_SIZE);
+    while(!data_received_flag); //wait for Rx to complete
+    memcpy(mySerialLow, rx_buffer, 8);  // Move the received data to the transmission buffer
+    data_received_flag = 0; //reset receive flag
+}
+// Function to exit XBee AT Command Mode
+void exitCommandMode(void)
+{
+    char exit_command[] = "ATCN\r";  // Command to exit AT command mode
+
+    // Send ATCN command to exit command mode
+    HAL_UART_Transmit(&huart1, (uint8_t*)exit_command, strlen(exit_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, Data_BUFFER_SIZE);
+
+}
+
+/*
+ * Receive interrupt callback function
+ */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)  // Ensure it's USART1
+    {
+   	 data_received_flag = 1;    // Indicate data has been received
+
+
+   	 //memset(rx_buffer, 0, Data_BUFFER_SIZE); // Optionally clear the rx_buffer
+
+        HAL_UART_Receive_IT(&huart1, rx_buffer, Data_BUFFER_SIZE);   // Re-enable receiving more data
+    }
+
+    // Handle Overrun Error
+    if (USART1->ISR & USART_ISR_ORE)
+    {
+        // Read status register to clear ORE flag
+       // uint8_t temp = USART1->ISR;
+        // Read data register to clear the ORE flag
+        (void)USART1->RDR;
+        // Re-enable UART receive interrupt
+        HAL_UART_Receive_IT(&huart1, rx_buffer, Data_BUFFER_SIZE);
+
+    }
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
  /* If detection pin is active, delay for 1 ms ...
@@ -197,6 +277,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	     }
 
 }
+
+
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
