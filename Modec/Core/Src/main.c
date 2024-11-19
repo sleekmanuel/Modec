@@ -18,11 +18,9 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "iwdg.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include "stm32l4xx_hal_flash.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,6 +48,7 @@
 
 /* USER CODE BEGIN PV */
 volatile uint32_t lastDebounceTime = 0;
+volatile uint8_t ResetCount = 0;
 
 uint8_t TxData_Presence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0F};
 uint8_t TxData_NoPresence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0A};
@@ -104,17 +103,17 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
-  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
-  SetLowPowerMode(1);        // Enable low power on startup
+  //SetLowPowerMode(1);        // Enable low power on startup
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
-	  Watchdog_Refresh();    // Periodically refresh the watchdog in the main loop
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -139,8 +138,7 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_MSI;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = 0;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
@@ -153,7 +151,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-	  Error_Handler();
+    Error_Handler();
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
@@ -167,7 +165,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_3) != HAL_OK)
   {
-	  Error_Handler();
+    Error_Handler();
   }
 }
 
@@ -178,7 +176,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  /* If detection pin is active, delay for 1 ms ...
   *
  */
-	     if(GPIO_Pin == PIR_Pin)
+   		if(GPIO_Pin == PIR_Pin)
 	     {
 	         /* Get the current time (in milliseconds) */
 	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
@@ -193,11 +191,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	 {
 	        		 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
 	        		 HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
-	        		 HAL_GPIO_WritePin(GPIOA, LED_Pin, SET);
 	        	 }
         		 lastDebounceTime = currentTime;   /* Update the last debounce time */
 	         }
-	         SetLowPowerMode(0);  // Disable low power on presence detection
 	     }
 
 }
@@ -208,9 +204,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
 	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 30 secs timer */
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
-	  HAL_GPIO_WritePin(GPIOA, LED_Pin, RESET);
-
-	  SetLowPowerMode(1);  // Enable low power on no presence
+	  //SetLowPowerMode(1);  // Enable low power on no presence
 
   }
 }
@@ -264,10 +258,6 @@ void SetLowPowerMode(uint8_t enable)
         HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
         HAL_SuspendTick();
 
-        // Disable Watchdog Refresh in low power mode
-        IWDG_HandleTypeDef hiwdg = hiwdg;  // reference existing IWDG handle
-
-
        // HAL_IWDG_Stop(&hiwdg); // Stop watchdog
 
         HAL_PWR_EnableSleepOnExit();
@@ -302,6 +292,7 @@ void StoreErrorCode(uint32_t code1, uint32_t code2)
   */
 void GracefulShutdown(void)
 {
+    ResetCount +=1;
     // Safely shut down peripherals or save data here before reset
     HAL_UART_DeInit(&huart1); // Deinitialize UART
     HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
@@ -321,6 +312,7 @@ void IndicateErrorAndReset(void)
 {
     GracefulShutdown();
     NVIC_SystemReset(); // Trigger a system reset
+
 }
 /* USER CODE END 4 */
 

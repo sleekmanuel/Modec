@@ -50,7 +50,7 @@ void MX_USART1_UART_Init(void)
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
-	  Error_Handler();
+    Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
 
