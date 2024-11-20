@@ -39,7 +39,7 @@
 #define DEBOUNCE_DELAY_MS 1
 #define ERROR_FILE_ADDRESS 0x0803FFFA
 #define ERROR_LINE_ADDRESS 0x0803FFFB
-#define Data_BUFFER_SIZE 8 // Transmission Buffer size
+#define Data_BUFFER_SIZE 9 // Transmission Buffer size
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -61,8 +61,8 @@ uint8_t myDestLow[8];
 volatile uint32_t ErrorFile;
 volatile uint32_t ErrorLine;
 
-uint8_t rx_buffer[Data_BUFFER_SIZE];             // Buffer to store received data
-uint8_t RxData[Data_BUFFER_SIZE];
+ uint8_t rx_buffer[Data_BUFFER_SIZE];             // Buffer to store received data
+volatile uint8_t RxData[Data_BUFFER_SIZE];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,8 +123,8 @@ int main(void)
   enterCommandMode();
   //Request and store XBee Serial Number Low
   //requestSerialNumberLow();
-  requestDestNumberLow();
-  //setDestinationAddress(0x13A200, 0x4236C1F7);
+  //requestDestNumberLow();
+  setDestinationAddress(0x13A200, 0x4236C1F7);
   // Exit command mode
   exitCommandMode();
   /* USER CODE END 2 */
@@ -202,7 +202,7 @@ void enterCommandMode(void)
     HAL_UART_Transmit(&huart1, (uint8_t*)command_mode, strlen(command_mode), HAL_MAX_DELAY);
     HAL_Delay(1000);  // Small delay for XBee to respond
     // Receive the "OK" response from XBee
-    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, Data_BUFFER_SIZE);
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, 3);
 }
 
 // Function to request XBee Serial Number Low (ATSL)
@@ -247,7 +247,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
     HAL_UART_Transmit(&huart1, (uint8_t *)at_high, strlen(at_high), HAL_MAX_DELAY);
 
     // Enable reception interrupt
-    HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, Data_BUFFER_SIZE);
+    HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, 3);
 
     // Wait for reception to complete
     while (!data_received_flag);
@@ -262,7 +262,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
         HAL_UART_Transmit(&huart1, (uint8_t *)at_low, strlen(at_low), HAL_MAX_DELAY);
 
         // Enable reception interrupt
-        HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, Data_BUFFER_SIZE);
+        HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, 3);
 
         // Wait for reception to complete
         while (!data_received_flag);
@@ -275,7 +275,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
 
             // Save changes with ATWR command
             HAL_UART_Transmit(&huart1, (uint8_t *)"ATWR\r", 5, HAL_MAX_DELAY);
-            HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, Data_BUFFER_SIZE);
+            HAL_UART_Receive_IT(&huart1, (uint8_t *)rx_buffer, 3);
 
             // Wait for reception to complete
             while (!data_received_flag);
