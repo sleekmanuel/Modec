@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "math.h"
+#include <stdint.h>
+#include <stddef.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,8 +41,11 @@
 #define DEBOUNCE_DELAY_MS 1
 #define ERROR_FILE_ADDRESS 0x0803FFFA
 #define ERROR_LINE_ADDRESS 0x0803FFFB
-#define Data_BUFFER_SIZE 9 // Transmission Buffer size
-#define SERIAL_NUMBER_HIGH 0x13A200
+#define Data_BUFFER_SIZE 12 // Transmission Buffer size
+#define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
+#define MAX_STRING_LENGTH 2   // Each character string will be 2 bytes long (1 character + null terminator)
+#define MAX_PAIR_LENGTH 3     // Each paired string will be 3 bytes long (2 characters + null terminator)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,17 +59,18 @@
 volatile uint32_t lastDebounceTime = 0;
 volatile uint8_t data_received_flag = 0;  // Flag to indicate data reception
 volatile uint8_t overflow_flag = 0;		  // Flag to indicate UART_Rx overflow
-
-
-uint8_t TxData_Presence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0F};
-uint8_t TxData_NoPresence[6] = {0x42, 0x26, 0x7F, 0x1C, 0xC0, 0x0A};
-uint8_t mySerialLow[8];
-uint8_t myDestLow[8];
 volatile uint32_t ErrorFile;
 volatile uint32_t ErrorLine;
- uint8_t received_byte;
-uint8_t rx_buffer[Data_BUFFER_SIZE];             // Buffer to store received data
-volatile uint8_t RxData[Data_BUFFER_SIZE];
+
+uint8_t TxData_Presence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0F, 0x0D};
+uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0A, 0x0D};
+uint8_t mySerialLow[8];       // Store Source address Low
+uint8_t myDestLow[8];			// store destination address low
+uint8_t Control;                //used to determine if message is a request or command
+uint8_t Data;				   // Transmission data
+uint8_t received_byte;		  // Process UART_Rx by byte
+uint8_t rx_buffer[Data_BUFFER_SIZE];   // Buffer to store received data
+uint8_t LoadStatus = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,6 +87,8 @@ void requestSerialNumberLow(void);
 void requestDestNumberLow(void);
 void setDestinationAddress(uint32_t DH, uint32_t DL);
 void exitCommandMode(void);
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -101,7 +109,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+ HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -120,14 +128,16 @@ int main(void)
   MX_TIM2_Init();
  /* USER CODE BEGIN 2 */
   //SetLowPowerMode(1);        // Enable low power on startup
+
   /* --------------------------Zigbee Configuration Begin------------------------------------------------*/
+
   // enter AT command mode
   enterCommandMode();
   //Request and store XBee Serial Number Low
   requestSerialNumberLow();
 
-  setDestinationAddress(SERIAL_NUMBER_HIGH, 0x4236C1F7);
-  requestDestNumberLow();
+  //setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);   //requestDestNumberLow();
+
   // Exit command mode
   exitCommandMode();
   /* USER CODE END 2 */
@@ -136,9 +146,29 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	//HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
-	  //HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
-
+	  if(data_received_flag)
+	  {
+		  //Check if the message is meant for me
+		  if(memcmp(mySerialLow, rx_buffer, 8) == 0){
+			  Control = rx_buffer[8];
+			  // extract command information
+			  Data = rx_buffer[9];
+			  if(Control == 0xB3)
+			  {
+				  if(Data == 0x11)
+				 {
+				 	LoadStatus = 1;					// Feedback: Load is active
+				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
+				 }else if(Data == 0xAA)
+				 	{
+					 	 LoadStatus = 0;			// Feedback: Load is inactive
+				 	}else
+				 	{;}
+			  	}
+	     }
+		 data_received_flag = 0;  // resets received status to expect new data
+		 HAL_UART_Receive_IT(&huart1, &received_byte, 1);  // Continue receiving
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -314,8 +344,11 @@ void exitCommandMode(void)
 
     // Send ATCN command to exit command mode
     HAL_UART_Transmit(&huart1, (uint8_t*)exit_command, strlen(exit_command), HAL_MAX_DELAY);
-    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, Data_BUFFER_SIZE);
-
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, 3);
+    // Wait for reception to complete
+    while (!data_received_flag);
+    data_received_flag = 0;
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
 }
 
 /*
@@ -325,18 +358,21 @@ void exitCommandMode(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     static uint8_t index = 0;
 
-    if (huart->Instance == USART1) {  // Ensure correct UART
+    if (huart->Instance == USART1) {
         if (index < Data_BUFFER_SIZE - 1) {
-            rx_buffer[index++] = received_byte;  // Accumulate data
+            rx_buffer[index++] = received_byte;
+
+            if (received_byte == '\r') {  // End of response
+                data_received_flag = 1;
+                rx_buffer[index] = '\0';  // Null-terminate
+                index = 0;  // Reset for next reception
+            }
+        } else {
+            overflow_flag = 1;  // Signal buffer overflow
+            index = 0;  // Optionally reset the buffer
         }
 
-        if (received_byte == '\r') {  // End of response
-            data_received_flag = 1;
-            rx_buffer[index] = '\0';  // Null-terminate
-            index = 0;  // Reset index
-        } else {
-            HAL_UART_Receive_IT(huart, &received_byte, 1);  // Continue receiving
-        }
+        HAL_UART_Receive_IT(&huart1, &received_byte, 1);  // Continue receiving
     }
 }
 
@@ -352,16 +388,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	         /* Check if enough time has passed since the last press to consider this a valid press */
 	         if((currentTime - lastDebounceTime) >= DEBOUNCE_DELAY_MS)
 	         {
-	        	 if(TIM2->CNT > 0)
-	        	 {
+	        	 if(!LoadStatus){
+	        		 if(TIM2->CNT > 0)
+	        		 {
+	        			 TIM2->CNT = 0; //Reset timer
+	        			 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
+	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+	        		 }else
+	        		 {
+	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
+	        		 }
+	        	 }else{
 	        		 TIM2->CNT = 0; //Reset timer
 	        		 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
-	        	 }else
-	        	 {
-	        		 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
-	        		 HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
 	        	 }
-        		 lastDebounceTime = currentTime;   /* Update the last debounce time */
+	        	 lastDebounceTime = currentTime;   /* Update the last debounce time */
 	         }
 	     }
 
