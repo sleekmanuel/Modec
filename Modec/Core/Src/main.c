@@ -64,7 +64,6 @@ volatile uint32_t ErrorLine;
 
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0F, 0x0D};
 uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0A, 0x0D};
-char* str = "Woke up from interrupt";
 uint8_t mySerialLow[8];       // Store Source address Low
 uint8_t myDestLow[8];			// store destination address low
 uint8_t Control;                //used to determine if message is a request or command
@@ -135,7 +134,7 @@ int main(void)
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
   enterCommandMode();    // enter AT command mode
 
-  requestSerialNumberLow();    //Request and store XBee Serial Number Low
+   requestSerialNumberLow();    //Request and store XBee Serial Number Low
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
@@ -146,7 +145,6 @@ int main(void)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
    .........................................*/
-
   exitCommandMode();    // Exit command mode
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   /* USER CODE END 2 */
@@ -460,9 +458,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        			 TIM2->CNT = 0; //Reset timer
 	        			 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
 	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+
 	        		 }else
 	        		 {
 	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+
 	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
 	        		 }
 	        	 }else{
@@ -500,7 +500,9 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
    {
 		for (uint8_t i = 0; i < count; i++)
         {
-			HAL_GPIO_TogglePin(GPIOA, LED_Pin);
+			HAL_GPIO_WritePin(GPIOA, LED_Pin,1);
+			HAL_Delay(delay_ms);
+			HAL_GPIO_WritePin(GPIOA, LED_Pin,0);
 			HAL_Delay(delay_ms);
         }
    }else
