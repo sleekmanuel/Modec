@@ -88,6 +88,7 @@ void requestSerialNumberLow(void);
 void requestDestNumberLow(void);
 void setDestinationAddress(uint32_t DH, uint32_t DL);
 void TxPowerLevel(uint8_t Level);
+void RQPowerLevel();
 void exitCommandMode(void);
 
 
@@ -128,27 +129,26 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+
  /* USER CODE BEGIN 2 */
-  //SetLowPowerMode(1);        // Enable low power on startup
 
-  /* --------------------------Zigbee Configuration Begin------------------------------------------------*/
+  /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
+  enterCommandMode();    // enter AT command mode
 
-  // enter AT command mode
-  enterCommandMode();
-  //Request and store XBee Serial Number Low
-  requestSerialNumberLow();
-  /*..........Set Tx Power level.............
-   * Power levels 4 (highest) - 0 (lowest)
-   * TxPowerLevel(2);
-   .........................................*/
-
+  requestSerialNumberLow();    //Request and store XBee Serial Number Low
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
    */
 
-  // Exit command mode
-  exitCommandMode();
+  /*..........Chech & Set Tx Power level.............
+   * Power levels 4 (highest) - 0 (lowest)
+   * TxPowerLevel(2); SET
+   * RQPowerLevel();  CHECK
+   .........................................*/
+
+  exitCommandMode();    // Exit command mode
+  /* --------------------------Zigbee Configuration End-------------------------------------------*/
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -169,7 +169,7 @@ int main(void)
 				 {
 				 	LoadStatus = 1;					// Feedback: Load is active
 				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
-				 	HAL_UART_Transmit(&huart1, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
+
 				 }else if(Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
@@ -384,6 +384,23 @@ void TxPowerLevel(uint8_t Level)
     memset(rx_buffer, 0, Data_BUFFER_SIZE);
     data_received_flag = 0;
 }
+
+
+void RQPowerLevel()
+{
+    // Clear rx_buffer and reset the data_received_flag
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+    char at_command[] = "ATPL\r";  // Command to request Serial Number Low
+    //send ATPL command
+    HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+    // Wait for reception to complete
+    while (!data_received_flag);
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+}
+
 // Function to exit XBee AT Command Mode
 void exitCommandMode(void)
 {
