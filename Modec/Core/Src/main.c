@@ -435,8 +435,6 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
         {
 			HAL_GPIO_TogglePin(GPIOA, LED_Pin);
 			HAL_Delay(delay_ms);
-			HAL_GPIO_TogglePin(GPIOA, LED_Pin);
-			HAL_Delay(delay_ms);
         }
    }else
    {
@@ -445,8 +443,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
 		 {
 		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
 		    HAL_Delay(delay_ms);
-		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
-		 	HAL_Delay(delay_ms);
+
 		 }
    }
 }
@@ -456,7 +453,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
   */
 void FlashLED(void)
 {
-    ToggleLED(100,5,1); // toggle PVD LED
+    ToggleLED(500,5,1); // toggle PVD LED
 }
 
 
@@ -468,10 +465,8 @@ void SetLowPowerMode(uint8_t enable)
 {
     if (enable)
     {
-        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+       //HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
         HAL_SuspendTick();
-
-       // HAL_IWDG_Stop(&hiwdg); // Stop watchdog
 
         HAL_PWR_EnableSleepOnExit();
         HAL_PWR_EnterSTOPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
@@ -508,7 +503,7 @@ void GracefulShutdown(void)
     // Safely shut down peripherals or save data here before reset
     HAL_UART_DeInit(&huart1); // Deinitialize UART
     HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
-    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
+   // HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
 
     //  store status or error codes in non-volatile memory
     if (ErrorFile != 0xFFFFFFFF)
