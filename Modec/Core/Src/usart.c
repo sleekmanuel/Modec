@@ -53,7 +53,8 @@ void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
-
+  HAL_UARTEx_EnableStopMode(&huart1);
+  //HAL_UARTEx_SetWakeupCallback(&huart1, HAL_UART_WAKEUP_ON_RXNE);
   /* USER CODE END USART1_Init 2 */
 
 }

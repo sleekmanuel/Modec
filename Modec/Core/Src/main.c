@@ -64,6 +64,7 @@ volatile uint32_t ErrorLine;
 
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0F, 0x0D};
 uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0A, 0x0D};
+char* str = "Woke up from interrupt";
 uint8_t mySerialLow[8];       // Store Source address Low
 uint8_t myDestLow[8];			// store destination address low
 uint8_t Control;                //used to determine if message is a request or command
@@ -86,6 +87,7 @@ void enterCommandMode(void);
 void requestSerialNumberLow(void);
 void requestDestNumberLow(void);
 void setDestinationAddress(uint32_t DH, uint32_t DL);
+void TxPowerLevel(uint8_t Level);
 void exitCommandMode(void);
 
 
@@ -135,8 +137,15 @@ int main(void)
   enterCommandMode();
   //Request and store XBee Serial Number Low
   requestSerialNumberLow();
+  /*..........Set Tx Power level.............
+   * Power levels 4 (highest) - 0 (lowest)
+   * TxPowerLevel(2);
+   .........................................*/
 
-  //setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);   //requestDestNumberLow();
+  /*..........Set Destination Address..........
+   * Use ADDRESS_HIGH for DH
+   * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
+   */
 
   // Exit command mode
   exitCommandMode();
@@ -144,6 +153,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  SetLowPowerMode(1);  // Enable low power on no presence
   while (1)
   {
 	  if(data_received_flag)
@@ -159,6 +169,7 @@ int main(void)
 				 {
 				 	LoadStatus = 1;					// Feedback: Load is active
 				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
+				 	HAL_UART_Transmit(&huart1, (uint8_t*)str, strlen(str), HAL_MAX_DELAY);
 				 }else if(Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
@@ -270,7 +281,11 @@ void requestDestNumberLow(void)
     memcpy(myDestLow, rx_buffer, 8);  // Move the received data to the transmission buffer
     data_received_flag = 0; //reset receive flag
 }
-
+/**
+  * @brief  AT command function to Set Destination address
+  * @param  DH: Destination Address High
+  * @param  DL: Destination Address Low
+  */
 void setDestinationAddress(uint32_t DH, uint32_t DL)
 {
     char at_high[20];
@@ -335,8 +350,40 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
         printf("Failed to set destination high address!\n");
     }
 }
-
-
+/**
+  * @brief  AT command function to Transmit power level
+  * @param  Level: Transmit power level (4) highest (0) lowest
+  */
+void TxPowerLevel(uint8_t Level)
+{
+	char PL[10];
+    // Clear rx_buffer and reset the data_received_flag
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+   // char at_command[] = "ATPL2";  // Command to request Serial Number Low
+    // Format the AT commands
+    snprintf(PL, sizeof(PL), "ATPL %01X\r", (unsigned int)Level);
+    char write[] = "ATWR\r";
+    //send ATPL command
+    HAL_UART_Transmit(&huart1, (uint8_t*)PL, strlen(PL), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+    // Wait for reception to complete
+    while (!data_received_flag);
+    if (strncmp((char *)rx_buffer, "OK", 2) == 0) {
+        data_received_flag = 0;
+        memset(rx_buffer, 0, Data_BUFFER_SIZE);
+        HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
+        HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+        // Wait for reception to complete
+        while (!data_received_flag);
+        if (strncmp((char *)rx_buffer, "OK", 2) != 0) {
+        	// Handle memory write failure
+             printf("Failed to write changes to memory!\n");
+       }
+    }
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+}
 // Function to exit XBee AT Command Mode
 void exitCommandMode(void)
 {
@@ -359,6 +406,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     static uint8_t index = 0;
 
     if (huart->Instance == USART1) {
+    	SetLowPowerMode(0); //Exit Low Power Mode
         if (index < Data_BUFFER_SIZE - 1) {
             rx_buffer[index++] = received_byte;
 
@@ -383,6 +431,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  */
    		if(GPIO_Pin == PIR_Pin)
 	     {
+   			SetLowPowerMode(0); //Exit Low Power Mode
 	         /* Get the current time (in milliseconds) */
 	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
 	         /* Check if enough time has passed since the last press to consider this a valid press */
@@ -410,6 +459,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 
+// Turn off Switch after 30 secs and enter low power mode
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
@@ -417,7 +467,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
 	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 30 secs timer */
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
-	  //SetLowPowerMode(1);  // Enable low power on no presence
+	  SetLowPowerMode(1);  // Enable low power on no presence
 
   }
 }
@@ -465,17 +515,21 @@ void SetLowPowerMode(uint8_t enable)
 {
     if (enable)
     {
-       //HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+        // Set GPIOs to analog mode for unused pins
+        GPIO_InitTypeDef GPIO_InitStruct = {0};
+        GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+        // Enter STOP mode
         HAL_SuspendTick();
+        HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 
-        HAL_PWR_EnableSleepOnExit();
-        HAL_PWR_EnterSTOPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
-
+        // Exit STOP mode
         HAL_ResumeTick();
         SystemClock_Config();
 
-        // Re-enable Watchdog after exit from low power mode
-       // HAL_IWDG_Start(&hiwdg);
     }
     else
     {
