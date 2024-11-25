@@ -88,6 +88,8 @@ void requestDestNumberLow(void);
 void setDestinationAddress(uint32_t DH, uint32_t DL);
 void TxPowerLevel(uint8_t Level);
 void RQPowerLevel();
+void SleepMode(uint8_t Level);
+void RQSleepMode();
 void exitCommandMode(void);
 
 
@@ -104,6 +106,7 @@ void exitCommandMode(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -111,7 +114,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
- HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -128,17 +131,23 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
-
- /* USER CODE BEGIN 2 */
+  /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
   enterCommandMode();    // enter AT command mode
 
-   requestSerialNumberLow();    //Request and store XBee Serial Number Low
+  requestSerialNumberLow();    //Request and store XBee Serial Number Low
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
    */
+
+   /*..........Check and Set Sleep Mode Levels.............
+    * SleepMode(1);
+    * RQSleepMode();
+    .........................................*/
+
+
 
   /*..........Chech & Set Tx Power level.............
    * Power levels 4 (highest) - 0 (lowest)
@@ -148,9 +157,9 @@ int main(void)
   exitCommandMode();    // Exit command mode
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
   SetLowPowerMode(1);  // Enable low power on no presence
   while (1)
   {
@@ -171,6 +180,7 @@ int main(void)
 				 }else if(Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
+					 	 SetLowPowerMode(1);  // Enable low power on no presence
 				 	}else
 				 	{;}
 			  	}
@@ -349,7 +359,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
     }
 }
 /**
-  * @brief  AT command function to Transmit power level
+  * @brief  AT command function to change transmit power level
   * @param  Level: Transmit power level (4) highest (0) lowest
   */
 void TxPowerLevel(uint8_t Level)
@@ -398,6 +408,64 @@ void RQPowerLevel()
     memset(rx_buffer, 0, Data_BUFFER_SIZE);
     data_received_flag = 0;
 }
+
+/*
+  * @brief  AT command function to change sleep mode setting
+  * @param  Level: Transmit power level
+  * level 6 (Micropython sleep)
+  * level 5 ( Cyclic Pin-wake)
+  * level 4 (Cyclic Sleep)
+  * level 3 (Reserved)
+  * level 2 (Reserved)
+  * level 1 (pin hibernate)
+  * level 0 (No Sleep mode)
+  */
+void SleepMode(uint8_t Level)
+{
+	char SM[10];
+    // Clear rx_buffer and reset the data_received_flag
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+   // char at_command[] = "ATPL2";  // Command to request Serial Number Low
+    // Format the AT commands
+    snprintf(SM, sizeof(SM), "ATSM %01X\r", (unsigned int)Level);
+    char write[] = "ATWR\r";
+    //send ATPL command
+    HAL_UART_Transmit(&huart1, (uint8_t*)SM, strlen(SM), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+    // Wait for reception to complete
+    while (!data_received_flag);
+    if (strncmp((char *)rx_buffer, "OK", 2) == 0) {
+        data_received_flag = 0;
+        memset(rx_buffer, 0, Data_BUFFER_SIZE);
+        HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
+        HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+        // Wait for reception to complete
+        while (!data_received_flag);
+        if (strncmp((char *)rx_buffer, "OK", 2) != 0) {
+        	// Handle memory write failure
+             printf("Failed to write changes to memory!\n");
+       }
+    }
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+}
+//passive function to check Sleep mode setting
+void RQSleepMode()
+{
+    // Clear rx_buffer and reset the data_received_flag
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+    char at_command[] = "ATSM\r";  // Command to request Serial Number Low
+    //send ATPL command
+    HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+    // Wait for reception to complete
+    while (!data_received_flag);
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    data_received_flag = 0;
+}
+
 
 // Function to exit XBee AT Command Mode
 void exitCommandMode(void)
@@ -484,7 +552,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
 	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 30 secs timer */
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
-	  SetLowPowerMode(1);  // Enable low power on no presence
+
+
 
   }
 }
@@ -535,11 +604,7 @@ void SetLowPowerMode(uint8_t enable)
     if (enable)
     {
         HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
-        // Set GPIOs to analog mode for unused pins
-        GPIO_InitTypeDef GPIO_InitStruct = {0};
-        GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
-        HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+       HAL_GPIO_WritePin(GPIOA, XBEE_SLEEP_Pin, GPIO_PIN_SET); //XBee to enter sleep mode
 
         // Enter STOP mode
         HAL_SuspendTick();
@@ -548,6 +613,7 @@ void SetLowPowerMode(uint8_t enable)
         // Exit STOP mode
         HAL_ResumeTick();
         SystemClock_Config();
+        HAL_GPIO_WritePin(GPIOA, XBEE_SLEEP_Pin, GPIO_PIN_RESET); //XBee to exit sleep mode
 
     }
     else

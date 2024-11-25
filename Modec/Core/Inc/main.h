@@ -64,8 +64,8 @@ void Error_Handler(void);
 #define LED_GPIO_Port GPIOA
 #define Error_Pin GPIO_PIN_0
 #define Error_GPIO_Port GPIOB
-#define UART_SLEEP_Pin GPIO_PIN_8
-#define UART_SLEEP_GPIO_Port GPIOA
+#define XBEE_SLEEP_Pin GPIO_PIN_8
+#define XBEE_SLEEP_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 void FlashLED();
