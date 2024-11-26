@@ -60,7 +60,7 @@
 volatile uint32_t lastDebounceTime = 0;
 volatile uint8_t data_received_flag = 0;  // Flag to indicate data reception
 volatile uint8_t overflow_flag = 0;		  // Flag to indicate UART_Rx overflow
-volatile uint32_t ErrorFile;
+volatile uint8_t ErrorFile;
 volatile uint32_t ErrorLine;
 
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0F, 0x0D};
