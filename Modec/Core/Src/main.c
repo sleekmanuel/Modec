@@ -151,7 +151,7 @@ int main(void)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
    .........................................*/
-  exitCommandMode();    // Exit command mode
+
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
 
   /* USER CODE END 2 */

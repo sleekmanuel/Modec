@@ -50,7 +50,10 @@ extern volatile uint8_t data_received_flag; // Flag to indicate data reception c
 
 
 /**
- * @brief  Enter XBee AT Command Mode by sending "+++".
+ * @brief  Enter XBee AT Command Mode and request config parameter and exit. returns int response
+ * @param at_command: AT command to enter
+ * @param output_buffer: register to hold parameter requested
+ * @param length: length of parameter requested
  */
 
 
@@ -67,16 +70,9 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
     // Enter AT command mode
     HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-    HAL_Delay(1100);
-    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
-    uint32_t start_time = HAL_GetTick();
-    while (!data_received_flag) {
-        if ((HAL_GetTick() - start_time) >= timeout_duration) {
-            return XBEE_TIMEOUT_ERROR;
-        }
-    }
+    HAL_Delay(1000);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 3);
 
-    if (strncmp((char *)rx_buffer, "OK", 2) != 0) return XBEE_ERROR_RESPONSE;
 
     // Send the parameter request command
     data_received_flag = 0;
@@ -84,7 +80,8 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     HAL_UART_Transmit(&huart1, (uint8_t *)at_command, strlen(at_command), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart1, &received_byte, 1);
 
-    start_time = HAL_GetTick();
+    //implement timeout for xbee response
+   uint32_t start_time = HAL_GetTick();
     while (!data_received_flag) {
         if ((HAL_GetTick() - start_time) >= timeout_duration) {
             return XBEE_TIMEOUT_ERROR;
@@ -99,7 +96,7 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     memset(rx_buffer, 0, Data_BUFFER_SIZE);
     HAL_UART_Transmit(&huart1, (uint8_t *)exit_command, strlen(exit_command), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart1, &received_byte, 1);
-
+    //implement timeout for xbee response
     start_time = HAL_GetTick();
     while (!data_received_flag) {
         if ((HAL_GetTick() - start_time) >= timeout_duration) {
