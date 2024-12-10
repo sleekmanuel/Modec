@@ -67,9 +67,8 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
     // Enter AT command mode
     HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-    HAL_Delay(1000);
+    HAL_Delay(1100);
     HAL_UART_Receive_IT(&huart1, &received_byte, 1);
-
     uint32_t start_time = HAL_GetTick();
     while (!data_received_flag) {
         if ((HAL_GetTick() - start_time) >= timeout_duration) {
