@@ -124,9 +124,14 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
-  enterCommandMode();    // enter AT command mode
 
-  requestSerialNumberLow();    //Request and store XBee Serial Number Low
+  if (requestParameter("ATSL\r", mySerialLow, sizeof(mySerialLow)) != XBEE_SUCCESS) {
+      while(1){
+    	  HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
+    	  HAL_Delay(100);
+      }
+  }
+
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);

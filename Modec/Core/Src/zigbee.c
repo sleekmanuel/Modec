@@ -52,52 +52,65 @@ extern volatile uint8_t data_received_flag; // Flag to indicate data reception c
 /**
  * @brief  Enter XBee AT Command Mode by sending "+++".
  */
-void enterCommandMode(void)
-{
-    char command_mode[3] = "+++";
-    // Send "+++" to enter AT command mode
-    HAL_UART_Transmit(&huart1, (uint8_t*)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-    HAL_Delay(1000);  // Small delay for XBee to respond
-    // Receive the "OK" response from XBee
-    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, 3);
-}
 
-/**
- * @brief  Request XBee Serial Number Low (ATSL command).
- */
-void requestSerialNumberLow(void)
-{
-    // Clear rx_buffer and reset the data_received_flag
+
+int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length) {
+    // Clear buffer and reset flag
     memset(rx_buffer, 0, Data_BUFFER_SIZE);
     data_received_flag = 0;
 
-    char at_command[] = "ATSL\r";  // Command to request Serial Number Low
-    // Send the ATSL command
-    HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
-    // Receive the response (Serial Number Low)
-    HAL_UART_Receive_IT(&huart1,  &received_byte, 1);
-    while(!data_received_flag); //wait for Rx to complete
-    memcpy(mySerialLow, rx_buffer, 8);  // Move the received data to the transmission buffer
-    data_received_flag = 0; //reset receive flag
-}
-/**
- * @brief  Request Destination Address Low (ATDL command).
- */
-void requestDestNumberLow(void)
-{
-    // Clear rx_buffer and reset the data_received_flag
-    memset(rx_buffer, 0, Data_BUFFER_SIZE);
-    data_received_flag = 0;
+    char command_mode[] = "+++";
+    char exit_command[] = "ATCN\r";
 
-    char at_command[] = "ATDL\r";  // Command to request Serial Number Low
-    // Send the ATSL command
-    HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
-    // Receive the response (Serial Number Low)
+    // Define timeout duration (in milliseconds)
+    const uint32_t timeout_duration = 2000; // 2 seconds
+
+    // Enter AT command mode
+    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
+    HAL_Delay(1000);
     HAL_UART_Receive_IT(&huart1, &received_byte, 1);
-    while(!data_received_flag); //wait for Rx to complete
-    memcpy(myDestLow, rx_buffer, 8);  // Move the received data to the transmission buffer
-    data_received_flag = 0; //reset receive flag
+
+    uint32_t start_time = HAL_GetTick();
+    while (!data_received_flag) {
+        if ((HAL_GetTick() - start_time) >= timeout_duration) {
+            return XBEE_TIMEOUT_ERROR;
+        }
+    }
+
+    if (strncmp((char *)rx_buffer, "OK", 2) != 0) return XBEE_ERROR_RESPONSE;
+
+    // Send the parameter request command
+    data_received_flag = 0;
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    HAL_UART_Transmit(&huart1, (uint8_t *)at_command, strlen(at_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+
+    start_time = HAL_GetTick();
+    while (!data_received_flag) {
+        if ((HAL_GetTick() - start_time) >= timeout_duration) {
+            return XBEE_TIMEOUT_ERROR;
+        }
+    }
+
+    if (strlen((char *)rx_buffer) < length) return XBEE_ERROR_RESPONSE;
+    memcpy(output_buffer, rx_buffer, length);
+
+    // Exit AT command mode
+    data_received_flag = 0;
+    memset(rx_buffer, 0, Data_BUFFER_SIZE);
+    HAL_UART_Transmit(&huart1, (uint8_t *)exit_command, strlen(exit_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &received_byte, 1);
+
+    start_time = HAL_GetTick();
+    while (!data_received_flag) {
+        if ((HAL_GetTick() - start_time) >= timeout_duration) {
+            return XBEE_TIMEOUT_ERROR;
+        }
+    }
+
+    return strncmp((char *)rx_buffer, "OK", 2) == 0 ? XBEE_SUCCESS : XBEE_ERROR_RESPONSE;
 }
+
 
 
 /**
