@@ -23,8 +23,8 @@
  *       - `exitCommandMode()` - Exits AT command mode.
  *
  *    2. Query Functions:
- *       - `requestSerialNumberLow()` - Retrieves the Serial Number Low of the XBee module.
- *       - `requestDestNumberLow()` - Retrieves the Destination Address Low of the XBee module.
+ *       - `requestParameter()` - Retrieves the AT configuration parameters of the XBee module. No need to
+ *       enter or exit at command mode to use
  *       - `RQPowerLevel()` - Queries the transmit power level.
  *       - `RQSleepMode()` - Queries the current sleep mode setting.
  *
@@ -47,6 +47,21 @@ extern uint8_t received_byte;              // Variable to store single received 
 extern uint8_t mySerialLow[8];             // Array to store Serial Number Low
 extern uint8_t myDestLow[8];               // Array to store Destination Number Low
 extern volatile uint8_t data_received_flag; // Flag to indicate data reception completion
+
+
+
+/**
+ * @brief  Enter XBee AT Command Mode by sending "+++".
+ */
+void enterCommandMode(void)
+{
+    char command_mode[3] = "+++";
+    // Send "+++" to enter AT command mode
+    HAL_UART_Transmit(&huart1, (uint8_t*)command_mode, strlen(command_mode), HAL_MAX_DELAY);
+    HAL_Delay(1000);  // Small delay for XBee to respond
+    // Receive the "OK" response from XBee
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, 3);
+}
 
 
 /**
