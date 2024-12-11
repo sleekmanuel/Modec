@@ -154,6 +154,13 @@ int main(void)
 
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
 
+  // Cast the specific address to a pointer (use with caution!)
+  int *specificAddress = (int *)0x10000000;
+
+  for (int i = 0; i < 4096; i++) {
+      *(specificAddress + i) = i + 1; // Write values to specific addresses
+
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
