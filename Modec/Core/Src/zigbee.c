@@ -73,7 +73,6 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     HAL_Delay(1000);
     HAL_UART_Receive_IT(&huart1, &received_byte, 3);
 
-
     // Send the parameter request command
     data_received_flag = 0;
     memset(rx_buffer, 0, Data_BUFFER_SIZE);

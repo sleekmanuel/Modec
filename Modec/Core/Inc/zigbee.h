@@ -18,8 +18,6 @@
 #define XBEE_TIMEOUT_ERROR  2
 
 void enterCommandMode(void);
-void requestSerialNumberLow(void);
-void requestDestNumberLow(void);
 int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length);
 void setDestinationAddress(uint32_t DH, uint32_t DL);
 void TxPowerLevel(uint8_t Level);
