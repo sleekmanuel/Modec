@@ -13,8 +13,28 @@
   * in the root directory of this software component.
   * If no LICENSE file comes with this software, it is provided AS-IS.
   *
+  * Initialization:
+	System clock, peripherals (GPIO, USART, Timer), and Zigbee module configuration.
+  * Low Power Mode:
+	Functions to manage low-power mode by enabling/disabling STOP mode and controlling
+	the Zigbee module sleep state.
+  * Zigbee Communication:
+	Configures Zigbee parameters like sleep mode, power level, and destination address.
+	Sends and receives data through UART, processes commands, and responds accordingly.
+  * Interrupt Handlers:
+	Handles UART reception and GPIO interrupts for detecting events such as motion
+	(PIR sensor input).
+  * Error Handling:
+	Implements robust error handling with flashing LEDs and error logging into flash memory,
+	followed by a system reset.
+  * LED Indications:
+	LEDs are used to signal errors, low voltage, and operational states.
+  * Timers:
+	Utilizes a timer to track activity periods (e.g., 30 seconds of device activation).
   ******************************************************************************
   */
+
+
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -44,8 +64,6 @@
 #define ERROR_LINE_ADDRESS 0x0803FFFB
 #define Data_BUFFER_SIZE 12 // Transmission Buffer size
 #define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
-#define MAX_STRING_LENGTH 2   // Each character string will be 2 bytes long (1 character + null terminator)
-#define MAX_PAIR_LENGTH 3     // Each paired string will be 3 bytes long (2 characters + null terminator)
 
 /* USER CODE END PD */
 
