@@ -54,7 +54,12 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef struct {
+    uint8_t Control;	 //used to determine if message is a request or command
+    uint8_t Data;
+    uint8_t DestAddress[8];
+    uint8_t myAddress[8];
+} ZigbeeMessage;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -81,15 +86,17 @@ volatile uint8_t overflow_flag = 0;		  // Flag to indicate UART_Rx overflow
 volatile uint8_t ErrorFile;
 volatile uint32_t ErrorLine;
 
-uint8_t TxData_Presence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0F, 0x0D};
-uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x33, 0x36, 0x43, 0x31, 0x46, 0x37, 0xC0, 0x0A, 0x0D};
+uint8_t TxData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
+uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
 uint8_t mySerialLow[8];       // Store Source address Low
 uint8_t myDestLow[8];			// store destination address low
-uint8_t Control;                //used to determine if message is a request or command
-uint8_t Data;				   // Transmission data
+//uint8_t Control;                //used to determine if message is a request or command
+//uint8_t Data;				   // Transmission data
 uint8_t received_byte;		  // Process UART_Rx by byte
 uint8_t rx_buffer[Data_BUFFER_SIZE];   // Buffer to store received data
 uint8_t LoadStatus = 0;
+
+ZigbeeMessage receivedMessage; // Instance of the typedef structure
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,7 +150,7 @@ int main(void)
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
 
-  if (requestParameter("ATSL\r", mySerialLow, sizeof(mySerialLow)) != XBEE_SUCCESS) {
+  if (requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress)) != XBEE_SUCCESS) {
       while(1){
     	  HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
     	  HAL_Delay(100);
@@ -185,19 +192,20 @@ int main(void)
   {
 	  if(data_received_flag)
 	  {
+		  memcpy(receivedMessage.DestAddress, rx_buffer, 8);
+		  receivedMessage.Control = rx_buffer[8];
+		  receivedMessage.Data = rx_buffer[9];
 		  //Check if the message is meant for me
-		  if(memcmp(mySerialLow, rx_buffer, 8) == 0){
-			  Control = rx_buffer[8];
-			  // extract command information
-			  Data = rx_buffer[9];
-			  if(Control == 0xB3)
+		  if(memcmp(receivedMessage.myAddress, receivedMessage.DestAddress, 8) == 0){
+
+			  if(receivedMessage.Control == 0xB3)
 			  {
-				  if(Data == 0x11)
+				  if(receivedMessage.Data == 0x11)
 				 {
 				 	LoadStatus = 1;					// Feedback: Load is active
 				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
 
-				 }else if(Data == 0xAA)
+				 }else if(receivedMessage.Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
 					 	 SetLowPowerMode(1);  // Enable low power on no presence
