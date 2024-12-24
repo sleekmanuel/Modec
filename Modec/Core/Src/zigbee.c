@@ -40,13 +40,6 @@
 
 #include <zigbee.h>
 
-// External declarations for UART handle and buffers
-extern UART_HandleTypeDef huart1;          // UART handle
-extern uint8_t rx_buffer[Data_BUFFER_SIZE]; // Buffer to store received data
-extern uint8_t received_byte;              // Variable to store single received byte
-extern uint8_t mySerialLow[8];             // Array to store Serial Number Low
-extern uint8_t myDestLow[8];               // Array to store Destination Number Low
-extern volatile uint8_t data_received_flag; // Flag to indicate data reception completion
 
 
 

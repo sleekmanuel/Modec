@@ -172,13 +172,6 @@ int main(void)
 
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
 
-  // Cast the specific address to a pointer (use with caution!)
-  int *specificAddress = (int *)0x10000000;
-
-  for (int i = 0; i < 4096; i++) {
-      *(specificAddress + i) = i + 1; // Write values to specific addresses
-
-  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -323,7 +316,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        		 {
 	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
 
-	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
+	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
 	        		 }
 	        	 }else{
 	        		 TIM2->CNT = 0; //Reset timer
@@ -336,13 +329,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 }
 
 
-// Turn off Switch after 30 secs and enter low power mode
+// Turn off Switch after 15 secs and enter low power mode
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)  // Check if the interrupt is from TIM2
   {
-	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 30 secs timer */
+	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 15 secs timer */
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
   }
 }
