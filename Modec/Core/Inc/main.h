@@ -32,13 +32,20 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#define Data_BUFFER_SIZE 12  // Define buffer size as required
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
 
+typedef struct {
+    uint8_t rx_buffer[Data_BUFFER_SIZE];
+    uint8_t received_byte; 					// Buffer to store received data
+    volatile uint8_t data_received_flag;	// Flag to indicate data reception
+    volatile uint8_t overflow_flag;			// Flag to indicate UART_Rx overflow
+} XBeeModule;
+extern XBeeModule XBeeData;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -55,7 +62,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void FlashLED();
+void IndicateErrorAndReset(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -70,8 +78,8 @@ void Error_Handler(void);
 #define XBEE_SLEEP_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
-void FlashLED();
-void IndicateErrorAndReset(void);
+
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -57,8 +57,8 @@
 typedef struct {
     uint8_t Control;	 //used to determine if message is a request or command
     uint8_t Data;
-    uint8_t DestAddress[8];
-    uint8_t myAddress[8];
+    uint8_t DestAddress[8];	// Transmission data
+    uint8_t myAddress[8];	// Store Source address Low
 } ZigbeeMessage;
 /* USER CODE END PTD */
 
@@ -67,7 +67,6 @@ typedef struct {
 #define DEBOUNCE_DELAY_MS 1
 #define ERROR_FILE_ADDRESS 0x0803FFFA
 #define ERROR_LINE_ADDRESS 0x0803FFFB
-#define Data_BUFFER_SIZE 12 // Transmission Buffer size
 #define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
 
 /* USER CODE END PD */
@@ -81,22 +80,21 @@ typedef struct {
 
 /* USER CODE BEGIN PV */
 volatile uint32_t lastDebounceTime = 0;
-volatile uint8_t data_received_flag = 0;  // Flag to indicate data reception
-volatile uint8_t overflow_flag = 0;		  // Flag to indicate UART_Rx overflow
 volatile uint8_t ErrorFile;
 volatile uint32_t ErrorLine;
 
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
 uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
-uint8_t mySerialLow[8];       // Store Source address Low
-uint8_t myDestLow[8];			// store destination address low
-//uint8_t Control;                //used to determine if message is a request or command
-//uint8_t Data;				   // Transmission data
-uint8_t received_byte;		  // Process UART_Rx by byte
-uint8_t rx_buffer[Data_BUFFER_SIZE];   // Buffer to store received data
 uint8_t LoadStatus = 0;
 
-ZigbeeMessage receivedMessage; // Instance of the typedef structure
+ZigbeeMessage receivedMessage; // Instance of the ZigbeeMessage typedef structure
+XBeeModule XBeeData = {			// Initialize UART receive variables
+		.rx_buffer = {0},
+		.received_byte = 0,
+		.data_received_flag = 0,
+		.overflow_flag = 0
+};
+//create instance of XBeeModule typedef struct
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -156,10 +154,7 @@ int main(void)
     	  HAL_Delay(100);
       }
   }
-  //HAL_Delay(2000);
-  //enterCommandMode();
- // HAL_Delay(500);
-  //RQSleepMode();
+
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
@@ -174,7 +169,7 @@ int main(void)
 
 
 
-  /*..........Chech & Set Tx Power level.............
+  /*..........Check & Set Tx Power level.............
    * Power levels 4 (highest) - 0 (lowest)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
@@ -186,15 +181,15 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-  //SetLowPowerMode(1);  // Enable low power
+  SetLowPowerMode(1);  // Enable low power
   while (1)
   {
-	  if(data_received_flag)
+
+	  if(XBeeData.data_received_flag)
 	  {
-		  memcpy(receivedMessage.DestAddress, rx_buffer, 8);
-		  receivedMessage.Control = rx_buffer[8];
-		  receivedMessage.Data = rx_buffer[9];
+		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);
+		  receivedMessage.Control = XBeeData.rx_buffer[8];
+		  receivedMessage.Data = XBeeData.rx_buffer[9];
 		  //Check if the message is meant for me
 		  if(memcmp(receivedMessage.myAddress, receivedMessage.DestAddress, 8) == 0){
 
@@ -213,8 +208,8 @@ int main(void)
 				 	{;}
 			  	}
 	     }
-		 data_received_flag = 0;  // resets received status to expect new data
-		 HAL_UART_Receive_IT(&huart1, &received_byte, 1);  // Continue receiving
+		  XBeeData.data_received_flag = 0;  // resets received status to expect new data
+		 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
 	  }
     /* USER CODE END WHILE */
 
@@ -286,20 +281,20 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART1) {
     	SetLowPowerMode(0); //Exit Low Power Mode
         if (index < Data_BUFFER_SIZE - 1) {
-            rx_buffer[index++] = received_byte;
+        	XBeeData.rx_buffer[index++] = XBeeData.received_byte;
 
-            if (received_byte == '\r') {  // End of response
-                data_received_flag = 1;
-                rx_buffer[index] = '\0';  // Null-terminate
+            if (XBeeData.received_byte == '\r') {  // End of response
+            	XBeeData.data_received_flag = 1;
+            	XBeeData.rx_buffer[index] = '\0';  // Null-terminate
                 index = 0;  // Reset for next reception
             }
         } else {
-            overflow_flag = 1;  // Signal buffer overflow
-            rx_buffer[index] = '\0';	// Null-terminate
+        	XBeeData.overflow_flag = 1;  // Signal buffer overflow
+            XBeeData.rx_buffer[index] = '\0';	// Null-terminate
             index = 0;  // Optionally reset the buffer
         }
 
-        HAL_UART_Receive_IT(&huart1, &received_byte, 1);  // Continue receiving
+        HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
     }
 }
 
