@@ -149,7 +149,10 @@ int main(void)
     	  HAL_Delay(100);
       }
   }
-
+  //HAL_Delay(2000);
+  //enterCommandMode();
+ // HAL_Delay(500);
+  //RQSleepMode();
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
    * setDestinationAddress(ADDRESS_HIGH, 0x4236C1F7);
@@ -177,7 +180,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  SetLowPowerMode(1);  // Enable low power 
+  //SetLowPowerMode(1);  // Enable low power
   while (1)
   {
 	  if(data_received_flag)
