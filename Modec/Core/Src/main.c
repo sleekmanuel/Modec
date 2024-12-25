@@ -279,7 +279,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
     if (huart->Instance == USART1) {
     	SetLowPowerMode(0); //Exit Low Power Mode
-        if (index < Data_BUFFER_SIZE - 1) {
+        if (index < DATA_BUFFER_SIZE - 1) {
         	XBeeData.rx_buffer[index++] = XBeeData.received_byte;
 
             if (XBeeData.received_byte == '\r') {  // End of response

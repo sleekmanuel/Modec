@@ -32,7 +32,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define Data_BUFFER_SIZE 12  // Define buffer size as required
+//#define Data_BUFFER_SIZE 12  // Define buffer size as required
 #define DATA_BUFFER_SIZE 12  // Define buffer size as required
 /* USER CODE END Includes */
 
