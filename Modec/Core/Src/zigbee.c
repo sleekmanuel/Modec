@@ -67,7 +67,7 @@ void enterCommandMode(void)
 
 int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length) {
     // Clear buffer and reset flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 
     char command_mode[] = "+++";
@@ -83,7 +83,7 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
     // Send the parameter request command
     XBeeData.data_received_flag = 0;
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     HAL_UART_Transmit(&huart1, (uint8_t *)at_command, strlen(at_command), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
 
@@ -100,7 +100,7 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
     // Exit AT command mode
     XBeeData.data_received_flag = 0;
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     HAL_UART_Transmit(&huart1, (uint8_t *)exit_command, strlen(exit_command), HAL_MAX_DELAY);
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     //implement timeout for xbee response
@@ -131,7 +131,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
     snprintf(at_low, sizeof(at_low), "ATDL %08X\r", (unsigned int)DL);
 
     // Clear rx_buffer and reset the data_received_flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 
     // Transmit ATDH command
@@ -147,7 +147,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
     if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
         // Reset flag and buffer
     	XBeeData.data_received_flag = 0;
-        memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+        memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 
         // Transmit ATDL command
         HAL_UART_Transmit(&huart1, (uint8_t *)at_low, strlen(at_low), HAL_MAX_DELAY);
@@ -162,7 +162,7 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
         if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
             // Reset flag and buffer
         	XBeeData.data_received_flag = 0;
-            memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+            memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 
             // Save changes with ATWR command
             HAL_UART_Transmit(&huart1, (uint8_t *)"ATWR\r", 5, HAL_MAX_DELAY);
@@ -195,7 +195,7 @@ void TxPowerLevel(uint8_t Level)
 {
 	char PL[10];
     // Clear rx_buffer and reset the data_received_flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
    // char at_command[] = "ATPL2";  // Command to request Serial Number Low
     // Format the AT commands
@@ -208,7 +208,7 @@ void TxPowerLevel(uint8_t Level)
     while (!XBeeData.data_received_flag);
     if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
     	XBeeData.data_received_flag = 0;
-        memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+        memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
         HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
         HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
         // Wait for reception to complete
@@ -218,7 +218,7 @@ void TxPowerLevel(uint8_t Level)
              printf("Failed to write changes to memory!\n");
        }
     }
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 }
 
@@ -229,7 +229,7 @@ void TxPowerLevel(uint8_t Level)
 void RQPowerLevel()
 {
     // Clear rx_buffer and reset the data_received_flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
     char at_command[] = "ATPL\r";  // Command to request Serial Number Low
     //send ATPL command
@@ -237,7 +237,7 @@ void RQPowerLevel()
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     // Wait for reception to complete
     while (!XBeeData.data_received_flag);
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 }
 
@@ -256,7 +256,7 @@ void SleepMode(uint8_t Level)
 {
 	char SM[10];
     // Clear rx_buffer and reset the data_received_flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
    // char at_command[] = "ATPL2";  // Command to request Serial Number Low
     // Format the AT commands
@@ -269,7 +269,7 @@ void SleepMode(uint8_t Level)
     while (!XBeeData.data_received_flag);
     if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
     	XBeeData.data_received_flag = 0;
-        memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+        memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
         HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
         HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
         // Wait for reception to complete
@@ -279,7 +279,7 @@ void SleepMode(uint8_t Level)
              printf("Failed to write changes to memory!\n");
        }
     }
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 }
 
@@ -290,7 +290,7 @@ void SleepMode(uint8_t Level)
 void RQSleepMode()
 {
     // Clear rx_buffer and reset the data_received_flag
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
     char at_command[] = "ATSM\r";  // Command to request Serial Number Low
     //send ATPL command
@@ -298,7 +298,7 @@ void RQSleepMode()
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     // Wait for reception to complete
     while (!XBeeData.data_received_flag);
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
 }
 
@@ -316,5 +316,5 @@ void exitCommandMode(void)
     // Wait for reception to complete
     while (!XBeeData.data_received_flag);
     XBeeData.data_received_flag = 0;
-    memset(XBeeData.rx_buffer, 0, Data_BUFFER_SIZE);
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 }

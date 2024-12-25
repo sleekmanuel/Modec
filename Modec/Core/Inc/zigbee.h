@@ -16,6 +16,7 @@
 #define XBEE_SUCCESS        0
 #define XBEE_ERROR_RESPONSE 1
 #define XBEE_TIMEOUT_ERROR  2
+#define XBEE_TIMEOUT_DURATION 2000
 
 // External declarations for UART handle and buffers
 extern UART_HandleTypeDef huart1;          // UART handle

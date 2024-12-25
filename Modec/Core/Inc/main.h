@@ -33,6 +33,7 @@ extern "C" {
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #define Data_BUFFER_SIZE 12  // Define buffer size as required
+#define DATA_BUFFER_SIZE 12  // Define buffer size as required
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -40,7 +41,7 @@ extern "C" {
 
 
 typedef struct {
-    uint8_t rx_buffer[Data_BUFFER_SIZE];
+    uint8_t rx_buffer[DATA_BUFFER_SIZE];
     uint8_t received_byte; 					// Buffer to store received data
     volatile uint8_t data_received_flag;	// Flag to indicate data reception
     volatile uint8_t overflow_flag;			// Flag to indicate UART_Rx overflow
