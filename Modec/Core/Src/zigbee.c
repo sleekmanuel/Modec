@@ -40,9 +40,12 @@
 
 #include <zigbee.h>
 
+uint32_t start_time;
 
+void xbee_wait()
+{
 
-
+}
 /**
  * @brief  Enter XBee AT Command Mode by sending "+++".
  */
@@ -74,7 +77,7 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     char exit_command[] = "ATCN\r";
 
     // Define timeout duration (in milliseconds)
-    const uint32_t timeout_duration = 2000; // 2 seconds
+   // const uint32_t timeout_duration = 2000; // 2 seconds
 
     // Enter AT command mode
     HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
@@ -88,9 +91,9 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
 
     //implement timeout for xbee response
-   uint32_t start_time = HAL_GetTick();
+    start_time = HAL_GetTick();
     while (!XBeeData.data_received_flag) {
-        if ((HAL_GetTick() - start_time) >= timeout_duration) {
+        if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION) {
             return XBEE_TIMEOUT_ERROR;
         }
     }
@@ -106,7 +109,7 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     //implement timeout for xbee response
     start_time = HAL_GetTick();
     while (!XBeeData.data_received_flag) {
-        if ((HAL_GetTick() - start_time) >= timeout_duration) {
+        if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION) {
             return XBEE_TIMEOUT_ERROR;
         }
     }
