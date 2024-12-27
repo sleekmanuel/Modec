@@ -22,7 +22,7 @@
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
-
+volatile uint32_t lastDebounceTime = 0;
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -115,5 +115,80 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 2 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+ /* If detection pin is active, delay for 1 ms ...
+  *
+ */
+   		if(GPIO_Pin == PIR_Pin)
+	     {
+   			SetLowPowerMode(0); //Exit Low Power Mode
+	         /* Get the current time (in milliseconds) */
+	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
+	         /* Check if enough time has passed since the last press to consider this a valid press */
+	         if((currentTime - lastDebounceTime) >= DEBOUNCE_DELAY_MS)
+	         {
+	        	 if(!LoadStatus){
+	        		 if(TIM2->CNT > 0)
+	        		 {
+	        			 TIM2->CNT = 0; //Reset timer
+	        			 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
+	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+
+	        		 }else
+	        		 {
+	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+
+	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
+	        		 }
+	        	 }else{
+	        		 TIM2->CNT = 0; //Reset timer
+	        		 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
+	        	 }
+	        	 lastDebounceTime = currentTime;   /* Update the last debounce time */
+	         }
+	     }
+
+}
+
+
+
+/**
+  * @brief  Flash LED with customizable delay and count
+  * @param  delay_ms: Delay in milliseconds
+  * @param  count: Number of times to toggle LED
+  * @param	PVD: LED to toggle 1 for PVD 0 for error
+  */
+void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
+{
+   if(PVD)
+   {
+		for (uint8_t i = 0; i < count; i++)
+        {
+			HAL_GPIO_WritePin(GPIOA, LED_Pin,1);
+			HAL_Delay(delay_ms);
+			HAL_GPIO_WritePin(GPIOA, LED_Pin,0);
+			HAL_Delay(delay_ms);
+        }
+   }else
+   {
+
+		 for(uint8_t j = 0; j < count; j++)
+		 {
+		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
+		    HAL_Delay(delay_ms);
+
+		 }
+   }
+}
+
+/**
+  * @brief  Flash LED to indicate low voltage
+  */
+void FlashLED(void)
+{
+    ToggleLED(500,5,1); // toggle PVD LED
+}
+
 
 /* USER CODE END 2 */

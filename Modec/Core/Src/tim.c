@@ -107,5 +107,14 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 }
 
 /* USER CODE BEGIN 1 */
+// Turn off Switch after 15 secs and enter low power mode
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2)  // Check if the interrupt is from TIM2
+  {
+	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 15 secs timer */
+	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
+  }
+}
 /* USER CODE END 1 */

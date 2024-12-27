@@ -34,6 +34,7 @@ extern "C" {
 /* USER CODE BEGIN Includes */
 //#define Data_BUFFER_SIZE 12  // Define buffer size as required
 #define DATA_BUFFER_SIZE 12  // Define buffer size as required
+#define DEBOUNCE_DELAY_MS 1
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -47,6 +48,11 @@ typedef struct {
     volatile uint8_t overflow_flag;			// Flag to indicate UART_Rx overflow
 } XBeeModule;
 extern XBeeModule XBeeData;
+extern UART_HandleTypeDef huart1;
+extern TIM_HandleTypeDef htim2;
+extern uint8_t TxData_Presence[11];
+extern uint8_t TxData_NoPresence[11];
+extern uint8_t LoadStatus;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -79,7 +85,12 @@ void IndicateErrorAndReset(void);
 #define XBEE_SLEEP_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
-
+void SetLowPowerMode(uint8_t enable);
+void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
+void FlashLED(void);
+void IndicateErrorAndReset(void);
+void GracefulShutdown(void);
+void StoreErrorCode(uint32_t code, uint32_t code2);
 
 /* USER CODE END Private defines */
 

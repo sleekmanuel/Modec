@@ -64,7 +64,6 @@ typedef struct {
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define DEBOUNCE_DELAY_MS 1
 #define ERROR_FILE_ADDRESS 0x0803FFFA
 #define ERROR_LINE_ADDRESS 0x0803FFFB
 #define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
@@ -78,7 +77,7 @@ typedef struct {
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-volatile uint32_t lastDebounceTime = 0;
+
 volatile uint8_t ErrorFile;
 volatile uint32_t ErrorLine;
 
@@ -99,12 +98,7 @@ XBeeModule XBeeData = {			// Initialize UART receive variables
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void SetLowPowerMode(uint8_t enable);
-void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
-void FlashLED(void);
-void IndicateErrorAndReset(void);
-void GracefulShutdown(void);
-void StoreErrorCode(uint32_t code, uint32_t code2);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -268,118 +262,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-
-/*
- * Receive interrupt callback function
- */
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    static uint8_t index = 0;
-
-    if (huart->Instance == USART1) {
-    	SetLowPowerMode(0); //Exit Low Power Mode
-        if (index < DATA_BUFFER_SIZE - 1) {
-        	XBeeData.rx_buffer[index++] = XBeeData.received_byte;
-
-            if (XBeeData.received_byte == '\r') {  // End of response
-            	XBeeData.data_received_flag = 1;
-            	XBeeData.rx_buffer[index] = '\0';  // Null-terminate
-                index = 0;  // Reset for next reception
-            }
-        } else {
-        	XBeeData.overflow_flag = 1;  // Signal buffer overflow
-            XBeeData.rx_buffer[index] = '\0';	// Null-terminate
-            index = 0;  // Optionally reset the buffer
-        }
-
-        HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
-    }
-}
-
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
- /* If detection pin is active, delay for 1 ms ...
-  *
- */
-   		if(GPIO_Pin == PIR_Pin)
-	     {
-   			SetLowPowerMode(0); //Exit Low Power Mode
-	         /* Get the current time (in milliseconds) */
-	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
-	         /* Check if enough time has passed since the last press to consider this a valid press */
-	         if((currentTime - lastDebounceTime) >= DEBOUNCE_DELAY_MS)
-	         {
-	        	 if(!LoadStatus){
-	        		 if(TIM2->CNT > 0)
-	        		 {
-	        			 TIM2->CNT = 0; //Reset timer
-	        			 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
-	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
-
-	        		 }else
-	        		 {
-	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
-
-	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
-	        		 }
-	        	 }else{
-	        		 TIM2->CNT = 0; //Reset timer
-	        		 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
-	        	 }
-	        	 lastDebounceTime = currentTime;   /* Update the last debounce time */
-	         }
-	     }
-
-}
-
-
-// Turn off Switch after 15 secs and enter low power mode
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  if (htim->Instance == TIM2)  // Check if the interrupt is from TIM2
-  {
-	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 15 secs timer */
-	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
-  }
-}
-/**
-  * @brief  Flash LED with customizable delay and count
-  * @param  delay_ms: Delay in milliseconds
-  * @param  count: Number of times to toggle LED
-  * @param	PVD: LED to toggle 1 for PVD 0 for error
-  */
-void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
-{
-   if(PVD)
-   {
-		for (uint8_t i = 0; i < count; i++)
-        {
-			HAL_GPIO_WritePin(GPIOA, LED_Pin,1);
-			HAL_Delay(delay_ms);
-			HAL_GPIO_WritePin(GPIOA, LED_Pin,0);
-			HAL_Delay(delay_ms);
-        }
-   }else
-   {
-
-		 for(uint8_t j = 0; j < count; j++)
-		 {
-		 	HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
-		    HAL_Delay(delay_ms);
-
-		 }
-   }
-}
-
-/**
-  * @brief  Flash LED to indicate low voltage
-  */
-void FlashLED(void)
-{
-    ToggleLED(500,5,1); // toggle PVD LED
-}
 
 
 /**
