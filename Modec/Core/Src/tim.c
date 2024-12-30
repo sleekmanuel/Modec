@@ -113,7 +113,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)  // Check if the interrupt is from TIM2
   {
-	  HAL_TIM_Base_Stop_IT(&htim2);     /* Start 15 secs timer */
+	  HAL_TIM_Base_Stop_IT(&htim2);     /* Stop 15 secs timer */
 	  HAL_UART_Transmit(&huart1, TxData_NoPresence, sizeof(TxData_NoPresence), HAL_MAX_DELAY);
   }
 }

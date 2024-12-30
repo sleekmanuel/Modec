@@ -174,7 +174,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SetLowPowerMode(1);  // Enable low power
+ // SetLowPowerMode(1);  // Enable low power
   while (1)
   {
 
@@ -263,6 +263,32 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+/*
+ * Receive interrupt callback function
+ */
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    static uint8_t index = 0;
+
+    if (huart->Instance == USART1) {
+    	SetLowPowerMode(0); //Exit Low Power Mode
+        if (index < DATA_BUFFER_SIZE - 1) {
+        	XBeeData.rx_buffer[index++] = XBeeData.received_byte;
+
+            if (XBeeData.received_byte == '\r') {  // End of response
+            	XBeeData.data_received_flag = 1;
+            	XBeeData.rx_buffer[index] = '\0';  // Null-terminate
+                index = 0;  // Reset for next reception
+            }
+        } else {
+        	XBeeData.overflow_flag = 1;  // Signal buffer overflow
+            XBeeData.rx_buffer[index] = '\0';	// Null-terminate
+            index = 0;  // Optionally reset the buffer
+        }
+
+        HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
+    }
+}
 
 /**
   * @brief Enter or Exit Low Power (STOP) Mode. Set or Reset XBee from sleep mode
