@@ -88,7 +88,13 @@ uint8_t ZeroArray[8] = {0};
 uint8_t LoadStatus = 0;
 uint8_t TryCount = 0;
 
-ZigbeeMessage receivedMessage; // Instance of the ZigbeeMessage typedef structure
+ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
+{
+		.Control = 0,
+		.Data = 0,
+		.DestAddress = {0},
+		.myAddress = {0}
+};
 XBeeModule XBeeData =
 {			// Initialize UART receive variables
 		.rx_buffer = {0},
@@ -144,6 +150,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
+  memset(&receivedMessage.myAddress, 0, sizeof(receivedMessage.myAddress));
   requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress));
      // while(1){
     	 // HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
@@ -177,10 +184,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SetLowPowerMode(1);  // Enable low power
+
   while (1)
   {
-	  if(TryCount == 0)
+	  while(TryCount == 0)
 	  {
 		  if(memcmp(receivedMessage.myAddress, ZeroArray,8) == 0)
 		  {
@@ -191,6 +198,7 @@ int main(void)
 		  {
 			  TryCount = 1;
 			  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+			  SetLowPowerMode(1);  // Enable low power
 		  }
 	  }
 

@@ -68,7 +68,8 @@ void enterCommandMode(void)
  */
 
 
-int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length) {
+int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length)
+{
     // Clear buffer and reset flag
     memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
     XBeeData.data_received_flag = 0;
@@ -92,8 +93,10 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
     //implement timeout for xbee response
     start_time = HAL_GetTick();
-    while (!XBeeData.data_received_flag) {
-        if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION) {
+    while (!XBeeData.data_received_flag)
+    {
+        if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION)
+        {
             return XBEE_TIMEOUT_ERROR;
         }
     }
@@ -108,7 +111,8 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     //implement timeout for xbee response
     start_time = HAL_GetTick();
-    while (!XBeeData.data_received_flag) {
+    while (!XBeeData.data_received_flag)
+    {
         if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION) {
             return XBEE_TIMEOUT_ERROR;
         }
@@ -147,7 +151,8 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
     while (!XBeeData.data_received_flag);
 
     // Check response for ATDH
-    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
+    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+    {
         // Reset flag and buffer
     	XBeeData.data_received_flag = 0;
         memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
@@ -162,7 +167,8 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
         while (!XBeeData.data_received_flag);
 
         // Check response for ATDL
-        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
+        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+        {
             // Reset flag and buffer
         	XBeeData.data_received_flag = 0;
             memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
@@ -175,7 +181,8 @@ void setDestinationAddress(uint32_t DH, uint32_t DL)
             while (!XBeeData.data_received_flag);
 
             // Check response for ATWR
-            if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0) {
+            if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0)
+            {
                 // Handle memory write failure
                 printf("Failed to write changes to memory!\n");
             }
@@ -209,14 +216,16 @@ void TxPowerLevel(uint8_t Level)
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     // Wait for reception to complete
     while (!XBeeData.data_received_flag);
-    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
+    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+    {
     	XBeeData.data_received_flag = 0;
         memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
         HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
         HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
         // Wait for reception to complete
         while (!XBeeData.data_received_flag);
-        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0) {
+        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0)
+        {
         	// Handle memory write failure
              printf("Failed to write changes to memory!\n");
        }
@@ -270,14 +279,16 @@ void SleepMode(uint8_t Level)
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     // Wait for reception to complete
     while (!XBeeData.data_received_flag);
-    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
+    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+    {
     	XBeeData.data_received_flag = 0;
         memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
         HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
         HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
         // Wait for reception to complete
         while (!XBeeData.data_received_flag);
-        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0) {
+        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0)
+        {
         	// Handle memory write failure
              printf("Failed to write changes to memory!\n");
        }
