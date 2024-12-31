@@ -54,7 +54,8 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-typedef struct {
+typedef struct
+{
     uint8_t Control;	 //used to determine if message is a request or command
     uint8_t Data;
     uint8_t DestAddress[8];	// Transmission data
@@ -83,10 +84,13 @@ volatile uint32_t ErrorLine;
 
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
 uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
+uint8_t ZeroArray[8] = {0};
 uint8_t LoadStatus = 0;
+uint8_t TryCount = 0;
 
 ZigbeeMessage receivedMessage; // Instance of the ZigbeeMessage typedef structure
-XBeeModule XBeeData = {			// Initialize UART receive variables
+XBeeModule XBeeData =
+{			// Initialize UART receive variables
 		.rx_buffer = {0},
 		.received_byte = 0,
 		.data_received_flag = 0,
@@ -140,13 +144,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
+  requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress));
+     // while(1){
+    	 // HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
+    	//  HAL_Delay(100);
+     // }
 
-  if (requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress)) != XBEE_SUCCESS) {
-      while(1){
-    	  HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
-    	  HAL_Delay(100);
-      }
-  }
 
   /*..........Set Destination Address..........
    * Use ADDRESS_HIGH for DH
@@ -174,24 +177,38 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- // SetLowPowerMode(1);  // Enable low power
+  SetLowPowerMode(1);  // Enable low power
   while (1)
   {
+	  if(TryCount == 0)
+	  {
+		  if(memcmp(receivedMessage.myAddress, ZeroArray,8) == 0)
+		  {
+			  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+			  requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress));
+			  HAL_Delay(10000);
+		  }else
+		  {
+			  TryCount = 1;
+			  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+		  }
+	  }
 
-	  if(XBeeData.data_received_flag)
+ 	  if(XBeeData.data_received_flag)
 	  {
 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);
 		  receivedMessage.Control = XBeeData.rx_buffer[8];
 		  receivedMessage.Data = XBeeData.rx_buffer[9];
 		  //Check if the message is meant for me
-		  if(memcmp(receivedMessage.myAddress, receivedMessage.DestAddress, 8) == 0){
+		  if(memcmp(receivedMessage.myAddress, receivedMessage.DestAddress, 8) == 0)
+		  {
 
 			  if(receivedMessage.Control == 0xB3)
 			  {
 				  if(receivedMessage.Data == 0x11)
 				 {
 				 	LoadStatus = 1;					// Feedback: Load is active
-				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 30 secs timer */
+				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
 
 				 }else if(receivedMessage.Data == 0xAA)
 				 	{
@@ -267,23 +284,28 @@ void SystemClock_Config(void)
  * Receive interrupt callback function
  */
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
     static uint8_t index = 0;
 
-    if (huart->Instance == USART1) {
+    if (huart->Instance == USART1)
+    {
     	SetLowPowerMode(0); //Exit Low Power Mode
-        if (index < DATA_BUFFER_SIZE - 1) {
+        if (index < DATA_BUFFER_SIZE - 1)
+        {
         	XBeeData.rx_buffer[index++] = XBeeData.received_byte;
 
-            if (XBeeData.received_byte == '\r') {  // End of response
+            if (XBeeData.received_byte == '\r')// End of response
+            {
             	XBeeData.data_received_flag = 1;
             	XBeeData.rx_buffer[index] = '\0';  // Null-terminate
                 index = 0;  // Reset for next reception
             }
-        } else {
+        } else
+        {
         	XBeeData.overflow_flag = 1;  // Signal buffer overflow
             XBeeData.rx_buffer[index] = '\0';	// Null-terminate
-            index = 0;  // Optionally reset the buffer
+            index = 0; //reset the buffer
         }
 
         HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
