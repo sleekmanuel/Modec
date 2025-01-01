@@ -45,6 +45,7 @@ typedef struct {
     uint8_t received_byte; 					// Buffer to store received data
     volatile uint8_t data_received_flag;	// Flag to indicate data reception
     volatile uint8_t overflow_flag;			// Flag to indicate UART_Rx overflow
+    uint8_t myAddress[8];						// Store Source address Low
 } XBeeModule;
 extern XBeeModule XBeeData;
 extern UART_HandleTypeDef huart1;
@@ -89,7 +90,6 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
 void FlashLED(void);
 void IndicateErrorAndReset(void);
 void GracefulShutdown(void);
-void StoreErrorCode(uint32_t code, uint32_t code2);
 
 /* USER CODE END Private defines */
 

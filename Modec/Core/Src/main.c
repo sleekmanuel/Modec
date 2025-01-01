@@ -50,6 +50,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <zigbee.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,14 +60,14 @@ typedef struct
     uint8_t Control;	 //used to determine if message is a request or command
     uint8_t Data;
     uint8_t DestAddress[8];	// Transmission data
-    uint8_t myAddress[8];	// Store Source address Low
 } ZigbeeMessage;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ERROR_FILE_ADDRESS 0x0803FFFA
-#define ERROR_LINE_ADDRESS 0x0803FFFB
+//#define ERROR_FILE_ADDRESS 0x0803FFFA
+//#define ERROR_LINE_ADDRESS 0x0803FFFB
+#define XBEE_SERIAL_LOW_ADDRESS  0x0803FF70 // Flash memory address for XBee serial low
 #define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
 
 /* USER CODE END PD */
@@ -79,28 +80,27 @@ typedef struct
 
 /* USER CODE BEGIN PV */
 
-volatile uint8_t ErrorFile;
-volatile uint32_t ErrorLine;
-
 uint8_t TxData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
 uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
-uint8_t ZeroArray[8] = {0};
 uint8_t LoadStatus = 0;
-uint8_t TryCount = 0;
+uint8_t serialLowBuffer[8] = {0};
+uint64_t serialLow = 0;
+uint64_t FlashData =0;
+
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
 		.Control = 0,
 		.Data = 0,
-		.DestAddress = {0},
-		.myAddress = {0}
+		.DestAddress = {0}
 };
 XBeeModule XBeeData =
 {			// Initialize UART receive variables
 		.rx_buffer = {0},
 		.received_byte = 0,
 		.data_received_flag = 0,
-		.overflow_flag = 0
+		.overflow_flag = 0,
+		.myAddress = {0}
 };
 //create instance of XBeeModule typedef struct
 /* USER CODE END PV */
@@ -108,7 +108,11 @@ XBeeModule XBeeData =
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void RequestAndStoreSerialLow(void);
+void EraseFlashSector(uint32_t address);
+void WriteFlash(uint32_t address, uint64_t data);
+void uint64ToUint8Array(uint64_t value, uint8_t array[8]);
+//void WriteFlash64(uint32_t address, uint64_t data);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -150,12 +154,13 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
-  memset(&receivedMessage.myAddress, 0, sizeof(receivedMessage.myAddress));
-  requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress));
-     // while(1){
-    	 // HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin); // turn on LEDs
-    	//  HAL_Delay(100);
-     // }
+  /*
+   * ONLY USE FUNCTIONS DURING INITIAL CONFIGURATION OR MAKING CHANGES TO CONFIGURATION
+   * COMMENT OUT FUNCTIONS WHEN NOT IN USE
+   * STORE FLASHDATA FOR SERIAL DATA LOW FOR OPERATIONAL USE
+   */
+  // Request and store XBee serial low
+  //RequestAndStoreSerialLow();
 
 
   /*..........Set Destination Address..........
@@ -178,37 +183,27 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 
+  FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash
+  uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
-
+  //    // Indicate success via LED or log message
+  //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+  //    HAL_Delay(1000);
+  //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
+  // SetLowPowerMode(1);  // Enable low power
   while (1)
   {
-	  while(TryCount == 0)
-	  {
-		  if(memcmp(receivedMessage.myAddress, ZeroArray,8) == 0)
-		  {
-			  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
-			  requestParameter("ATSL\r", receivedMessage.myAddress, sizeof(receivedMessage.myAddress));
-			  HAL_Delay(10000);
-		  }else
-		  {
-			  TryCount = 1;
-			  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
-			  SetLowPowerMode(1);  // Enable low power
-		  }
-	  }
-
  	  if(XBeeData.data_received_flag)
 	  {
-		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);
+ 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);
 		  receivedMessage.Control = XBeeData.rx_buffer[8];
 		  receivedMessage.Data = XBeeData.rx_buffer[9];
 		  //Check if the message is meant for me
-		  if(memcmp(receivedMessage.myAddress, receivedMessage.DestAddress, 8) == 0)
+		  if(memcmp(XBeeData.myAddress, receivedMessage.DestAddress, 8) == 0)
 		  {
 
 			  if(receivedMessage.Control == 0xB3)
@@ -221,7 +216,7 @@ int main(void)
 				 }else if(receivedMessage.Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
-					 	 SetLowPowerMode(1);  // Enable low power on no presence
+					 	// SetLowPowerMode(1);  // Enable low power on no presence
 				 	}else
 				 	{;}
 			  	}
@@ -288,6 +283,13 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+//Convert a uint64_t  into a uint8_t array in little-endian order
+void uint64ToUint8Array(uint64_t value, uint8_t array[8]) {
+    for (int i = 0; i < 8; i++) {
+        array[i] = (value >> (i * 8)) & 0xFF; // Extract each byte
+    }
+}
+
 /*
  * Receive interrupt callback function
  */
@@ -346,16 +348,87 @@ void SetLowPowerMode(uint8_t enable)
         HAL_PWR_DisableSleepOnExit();
     }
 }
-/**
- * @brief store error code in flash memory
- * @param code: code to be stored
+
+/*
+ *  @brief Store XBEE serial number to flash memory
+ *  @serialLow 	 64bit serial numberto store in flash
  */
-void StoreErrorCode(uint32_t code1, uint32_t code2)
+void StoreXBeeSerialLow(uint64_t serialLow)
 {
-    HAL_FLASH_Unlock();  // Unlock Flash for writing
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, ERROR_FILE_ADDRESS, code1);  // Write code to Flash
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_FAST, ERROR_LINE_ADDRESS, code2);  // Write code to Flash
-    HAL_FLASH_Lock();    // Lock Flash after writing
+    uint32_t address = XBEE_SERIAL_LOW_ADDRESS;
+
+    // Step 1: Erase the Flash page
+    EraseFlashSector(address);
+
+    // Step 2: Write the 32-bit serialLow to Flash
+    WriteFlash(address, serialLow);
+}
+
+/*
+ *  @brief Request serial low number via XBee AT command and store in memory
+ */
+void RequestAndStoreSerialLow(void)
+{
+    // Request serial low number
+    requestParameter("ATSL\r", serialLowBuffer, sizeof(serialLowBuffer));
+
+    // Convert received buffer to 32-bit integer (assume little-endian format)
+    for (int i = 0; i < 8; i++)
+    {
+        serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * i)); //little-endian
+        //serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * (7 - i))); //big-endian
+    }
+
+    // Store the serial number in Flash memory
+    StoreXBeeSerialLow(serialLow);
+}
+
+/*
+ *  @brief Erase flash sector to prep for memory programming
+ *  @address Starting address to flash sector
+ */
+void EraseFlashSector(uint32_t address)
+{
+    HAL_FLASH_Unlock();
+
+    FLASH_EraseInitTypeDef eraseInitStruct;
+    uint32_t pageError = 0;
+
+    // Convert the address to a page number
+    uint64_t page = (address - FLASH_BASE) / FLASH_PAGE_SIZE;
+
+    eraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+    eraseInitStruct.Page = page;             // Page number for newer MCUs
+    eraseInitStruct.NbPages = 1;             // Number of pages to erase
+
+    if (HAL_FLASHEx_Erase(&eraseInitStruct, &pageError) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return;
+    }
+
+    HAL_FLASH_Lock();
+}
+
+/*
+ *  @brief Write to flash memory after erase
+ *  @addressFlash memory address to be written into
+ *  @data 64bit data to be written to memory
+ */
+void WriteFlash(uint32_t address, uint64_t data)
+{
+    HAL_FLASH_Unlock();
+
+    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data) != HAL_OK)
+    {
+        // Handle error
+        // Indicate success via LED or log message
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);  // Example success indication
+        HAL_Delay(1000);
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+    }
+
+    HAL_FLASH_Lock();
 }
 
 
@@ -369,9 +442,7 @@ void GracefulShutdown(void)
     HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
    // HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
 
-    //  store status or error codes in non-volatile memory
-    if (ErrorFile != 0xFFFFFFFF)
-    	StoreErrorCode(ErrorFile, ErrorLine);  // Store error code in Flash
+
 
     HAL_Delay(500); // Allow time for final tasks
 }
@@ -415,9 +486,7 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-	ErrorFile = file;
-	ErrorLine = line;
-	IndicateErrorAndReset();
+
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
