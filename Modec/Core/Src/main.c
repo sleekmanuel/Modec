@@ -30,7 +30,7 @@
   * LED Indications:
 	LEDs are used to signal errors, low voltage, and operational states.
   * Timers:
-	Utilizes a timer to track activity periods (e.g., 30 seconds of device activation).
+	Utilizes a timer to track activity periods (e.g., 15 seconds of device activation).
   ******************************************************************************
   */
 
@@ -65,8 +65,6 @@ typedef struct
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-//#define ERROR_FILE_ADDRESS 0x0803FFFA
-//#define ERROR_LINE_ADDRESS 0x0803FFFB
 #define XBEE_SERIAL_LOW_ADDRESS  0x0803FF70 // Flash memory address for XBee serial low
 #define ADDRESS_HIGH 0x13A200  // High address on Xbee devices
 
@@ -186,7 +184,7 @@ int main(void)
   FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash
   uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
-  //    // Indicate success via LED or log message
+  //    // Indicate Device is ready to run
   //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
   //    HAL_Delay(1000);
   //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
@@ -370,17 +368,20 @@ void StoreXBeeSerialLow(uint64_t serialLow)
 void RequestAndStoreSerialLow(void)
 {
     // Request serial low number
-    requestParameter("ATSL\r", serialLowBuffer, sizeof(serialLowBuffer));
-
-    // Convert received buffer to 32-bit integer (assume little-endian format)
-    for (int i = 0; i < 8; i++)
+    if(requestParameter("ATSL\r", serialLowBuffer, sizeof(serialLowBuffer)) == XBEE_SUCCESS)
     {
-        serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * i)); //little-endian
-        //serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * (7 - i))); //big-endian
+    	for (int i = 0; i < 8; i++)		// Convert received buffer to 32-bit integer (assume little-endian format)
+    	{
+    		serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * i)); //little-endian
+    		//serialLow |= ((uint64_t)serialLowBuffer[i] << (8 * (7 - i))); //big-endian
+    	}
+    	StoreXBeeSerialLow(serialLow);		// Store the serial number in Flash memory
+    }else{
+        // Indicate failure via LED blink for 2 sec
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+        HAL_Delay(2000);
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
     }
-
-    // Store the serial number in Flash memory
-    StoreXBeeSerialLow(serialLow);
 }
 
 /*
@@ -421,9 +422,9 @@ void WriteFlash(uint32_t address, uint64_t data)
 
     if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, address, data) != HAL_OK)
     {
-        // Handle error
-        // Indicate success via LED or log message
-        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);  // Example success indication
+
+        // Indicate failure via LED blink for 1 sec
+        HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
         HAL_Delay(1000);
         HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
     }
