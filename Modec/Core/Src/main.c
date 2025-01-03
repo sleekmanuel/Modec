@@ -173,8 +173,6 @@ int main(void)
     * RQSleepMode();
     .........................................*/
 
-
-
   /*..........Check & Set Tx Power level.............
    * Power levels 4 (highest) - 0 (lowest)
    * TxPowerLevel(2); SET
@@ -183,6 +181,7 @@ int main(void)
 
   FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash
   uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array
+
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   //    // Indicate Device is ready to run
   //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
@@ -192,7 +191,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  // SetLowPowerMode(1);  // Enable low power
+  SetLowPowerMode(1);  // Enable low power
   while (1)
   {
  	  if(XBeeData.data_received_flag)
@@ -214,7 +213,7 @@ int main(void)
 				 }else if(receivedMessage.Data == 0xAA)
 				 	{
 					 	 LoadStatus = 0;			// Feedback: Load is inactive
-					 	// SetLowPowerMode(1);  // Enable low power on no presence
+					 	 SetLowPowerMode(1);  // Enable low power on no presence
 				 	}else
 				 	{;}
 			  	}
