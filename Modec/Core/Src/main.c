@@ -179,7 +179,7 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 
-  FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash
+  FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array
 
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
@@ -195,8 +195,8 @@ int main(void)
   while (1)
   {
  	  if(XBeeData.data_received_flag)
-	  {
- 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);
+	  {		//get zigbee message from xbee module
+ 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
 		  receivedMessage.Control = XBeeData.rx_buffer[8];
 		  receivedMessage.Data = XBeeData.rx_buffer[9];
 		  //Check if the message is meant for me
