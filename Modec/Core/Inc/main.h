@@ -64,9 +64,12 @@ typedef struct {
 extern XBeeModule XBeeData;
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim2;
+extern NodeDiscovery newNode[MAX_DEVICES];
 extern uint8_t txData_Presence[11];
 extern uint8_t txData_NoPresence[11];
 extern uint8_t loadStatus;
+extern uint8_t deviceCount;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -104,6 +107,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD);
 void FlashLED(void);
 void IndicateErrorAndReset(void);
 void GracefulShutdown(void);
+
 
 /* USER CODE END Private defines */
 

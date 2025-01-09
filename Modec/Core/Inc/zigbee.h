@@ -28,6 +28,7 @@ void TxPowerLevel(uint8_t Level);
 void RQPowerLevel();
 void SleepMode(uint8_t Level);
 void RQSleepMode();
+void XBee_NodeDiscovery(void);
 void exitCommandMode(void);
 
 

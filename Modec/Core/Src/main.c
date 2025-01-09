@@ -180,76 +180,10 @@ int main(void)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
    .........................................*/
+
   enterCommandMode();
-  // Clear buffer and reset flag
-  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-  XBeeData.data_received_flag = 0;
-
-  HAL_UART_Transmit(&huart1, (uint8_t *)"ATND\r", 5, 1000); // send command for ATND
-  HAL_Delay(200);
-  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-  for(int i = 0; i < MAX_DEVICES; i++){
-	  while (!XBeeData.data_received_flag);
-	  if(memcmp(XBeeData.rx_buffer, "\r", 1) == 0) break; //end of discovery
-	  memcpy(newNode[i].NetAddress, XBeeData.rx_buffer, sizeof(newNode[i].NetAddress)); // store Network Address
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].SerialHigh, XBeeData.rx_buffer, sizeof(newNode[i].SerialHigh)); //store Serial # High
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].SerialLow, XBeeData.rx_buffer, sizeof(newNode[i].SerialLow)); //store serial # Low
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].NodeID, XBeeData.rx_buffer, sizeof(newNode[i].NodeID));		//store Node Identifier
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].pAddress, XBeeData.rx_buffer, sizeof(newNode[i].pAddress));		//store parent Address
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].dType, XBeeData.rx_buffer, sizeof(newNode[i].dType));		//store device type
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].RSSI, XBeeData.rx_buffer, sizeof(newNode[i].RSSI));			//store RSSI
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].pID, XBeeData.rx_buffer, sizeof(newNode[i].pID));		//profile ID
-	  //clear buffer and reset flag
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memcpy(newNode[i].manID, XBeeData.rx_buffer, sizeof(newNode[i].manID));	//manufacturer ID
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-	  while (!XBeeData.data_received_flag);
-	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);			//receive and reset carriage return (signifies end of one device spec)
-	  XBeeData.data_received_flag = 0;
-	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
-
-	  deviceCount++; //increment # of devices discovered
-  }
+  XBee_NodeDiscovery();
+  exitCommandMode();
 
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
