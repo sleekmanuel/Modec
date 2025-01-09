@@ -78,13 +78,13 @@ typedef struct
 
 /* USER CODE BEGIN PV */
 
-uint8_t TxData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
-uint8_t TxData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
-uint8_t LoadStatus = 0;
+uint8_t txData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
+uint8_t txData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
+uint8_t loadStatus = 0;
 uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
-uint64_t FlashData =0;
-uint8_t xbuffer[ND_DATA_SIZE];
+uint64_t flashData =0;
+uint8_t deviceCount = 1;
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
@@ -100,6 +100,8 @@ XBeeModule XBeeData =
 		.overflow_flag = 0,
 		.myAddress = {0}
 };
+
+NodeDiscovery newNode[MAX_DEVICES];
 //create instance of XBeeModule typedef struct
 /* USER CODE END PV */
 
@@ -179,12 +181,79 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
   enterCommandMode();
+  // Clear buffer and reset flag
+  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+  XBeeData.data_received_flag = 0;
+
   HAL_UART_Transmit(&huart1, (uint8_t *)"ATND\r", 5, 1000); // send command for ATND
   HAL_Delay(200);
-  HAL_UART_Receive(&huart1, xbuffer, ND_DATA_SIZE, HAL_MAX_DELAY);
+  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+  for(int i = 0; i < MAX_DEVICES; i++){
+	  while (!XBeeData.data_received_flag);
+	  if(memcmp(XBeeData.rx_buffer, "\r", 1) == 0) break; //end of discovery
+	  memcpy(newNode[i].NetAddress, XBeeData.rx_buffer, sizeof(newNode[i].NetAddress)); // store Network Address
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].SerialHigh, XBeeData.rx_buffer, sizeof(newNode[i].SerialHigh)); //store Serial # High
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].SerialLow, XBeeData.rx_buffer, sizeof(newNode[i].SerialLow)); //store serial # Low
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].NodeID, XBeeData.rx_buffer, sizeof(newNode[i].NodeID));		//store Node Identifier
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].pAddress, XBeeData.rx_buffer, sizeof(newNode[i].pAddress));		//store parent Address
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].dType, XBeeData.rx_buffer, sizeof(newNode[i].dType));		//store device type
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].RSSI, XBeeData.rx_buffer, sizeof(newNode[i].RSSI));			//store RSSI
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].pID, XBeeData.rx_buffer, sizeof(newNode[i].pID));		//profile ID
+	  //clear buffer and reset flag
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memcpy(newNode[i].manID, XBeeData.rx_buffer, sizeof(newNode[i].manID));	//manufacturer ID
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	  while (!XBeeData.data_received_flag);
+	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);			//receive and reset carriage return (signifies end of one device spec)
+	  XBeeData.data_received_flag = 0;
+	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
 
-  FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
-  uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array
+	  deviceCount++; //increment # of devices discovered
+  }
+
+  flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
+  uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
+
 
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   //    // Indicate Device is ready to run
@@ -211,12 +280,12 @@ int main(void)
 			  {
 				  if(receivedMessage.Data == 0x11)
 				 {
-				 	LoadStatus = 1;					// Feedback: Load is active
+				 	loadStatus = 1;					// Feedback: Load is active
 				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
 
 				 }else if(receivedMessage.Data == 0xAA)
 				 	{
-					 	 LoadStatus = 0;			// Feedback: Load is inactive
+					 	 loadStatus = 0;			// Feedback: Load is inactive
 					 	 SetLowPowerMode(1);  // Enable low power on no presence
 				 	}else
 				 	{;}

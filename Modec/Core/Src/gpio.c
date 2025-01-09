@@ -128,16 +128,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	         /* Check if enough time has passed since the last press to consider this a valid press */
 	         if((currentTime - lastDebounceTime) >= DEBOUNCE_DELAY_MS)
 	         {
-	        	 if(!LoadStatus){
+	        	 if(!loadStatus){
 	        		 if(TIM2->CNT > 0)
 	        		 {
 	        			 TIM2->CNT = 0; //Reset timer
 	        			 TIM2->CR1 |= TIM_CR1_CEN; // Enable the timer
-	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+	        			 HAL_UART_Transmit(&huart1, txData_Presence, sizeof(txData_Presence), HAL_MAX_DELAY);
 
 	        		 }else
 	        		 {
-	        			 HAL_UART_Transmit(&huart1, TxData_Presence, sizeof(TxData_Presence), HAL_MAX_DELAY);
+	        			 HAL_UART_Transmit(&huart1, txData_Presence, sizeof(txData_Presence), HAL_MAX_DELAY);
 
 	        			 HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
 	        		 }

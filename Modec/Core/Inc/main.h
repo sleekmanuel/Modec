@@ -31,11 +31,10 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-//#define Data_BUFFER_SIZE 12  // Define buffer size as required
 #define DATA_BUFFER_SIZE 12  // Define buffer size as required
 #define DEBOUNCE_DELAY_MS 1
 #define ADDRESS_SIZE 8
-#define ND_DATA_SIZE 32
+#define MAX_DEVICES 12
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -53,21 +52,21 @@ typedef struct {
 typedef struct {
 	uint8_t SerialHigh[ADDRESS_SIZE];		//Serial Address high
 	uint8_t SerialLow[ADDRESS_SIZE];		//Serial Address low
-	uint8_t NodeID[ADDRESS_SIZE];			// Node Identifier
-	uint8_t RSSI;							//RSSI - Signal Strength
-	uint8_t NetAddress[2];					//Network Address
-	uint8_t pAddress[2];					//Parent Address
-	uint8_t dType;							//Device Type
-	uint8_t pID[2];							//Profile ID
-	uint8_t manID[2];							// Manufacturer ID
+	char NodeID[ADDRESS_SIZE];			// Node Identifier
+	uint8_t RSSI[2];							//RSSI - Signal Strength
+	uint8_t NetAddress[4];					//Network Address
+	uint8_t pAddress[4];					//Parent Address
+	uint8_t dType[2];							//Device Type
+	uint8_t pID[4];							//Profile ID
+	uint8_t manID[4];							// Manufacturer ID
 }NodeDiscovery;
 
 extern XBeeModule XBeeData;
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim2;
-extern uint8_t TxData_Presence[11];
-extern uint8_t TxData_NoPresence[11];
-extern uint8_t LoadStatus;
+extern uint8_t txData_Presence[11];
+extern uint8_t txData_NoPresence[11];
+extern uint8_t loadStatus;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
