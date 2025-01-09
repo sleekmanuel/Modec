@@ -84,7 +84,7 @@ uint8_t LoadStatus = 0;
 uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
 uint64_t FlashData =0;
-
+uint8_t xbuffer[ND_DATA_SIZE];
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
@@ -178,6 +178,10 @@ int main(void)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
    .........................................*/
+  enterCommandMode();
+  HAL_UART_Transmit(&huart1, (uint8_t *)"ATND\r", 5, 1000); // send command for ATND
+  HAL_Delay(200);
+  HAL_UART_Receive(&huart1, xbuffer, ND_DATA_SIZE, HAL_MAX_DELAY);
 
   FlashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(FlashData,  XBeeData.myAddress); // Convert Data to Array

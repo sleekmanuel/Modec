@@ -34,6 +34,8 @@ extern "C" {
 //#define Data_BUFFER_SIZE 12  // Define buffer size as required
 #define DATA_BUFFER_SIZE 12  // Define buffer size as required
 #define DEBOUNCE_DELAY_MS 1
+#define ADDRESS_SIZE 8
+#define ND_DATA_SIZE 32
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -45,8 +47,21 @@ typedef struct {
     uint8_t received_byte; 					// Buffer to store received data
     volatile uint8_t data_received_flag;	// Flag to indicate data reception
     volatile uint8_t overflow_flag;			// Flag to indicate UART_Rx overflow
-    uint8_t myAddress[8];						// Store Source address Low
+    uint8_t myAddress[ADDRESS_SIZE];						// Store Source address Low
 } XBeeModule;
+
+typedef struct {
+	uint8_t SerialHigh[ADDRESS_SIZE];		//Serial Address high
+	uint8_t SerialLow[ADDRESS_SIZE];		//Serial Address low
+	uint8_t NodeID[ADDRESS_SIZE];			// Node Identifier
+	uint8_t RSSI;							//RSSI - Signal Strength
+	uint8_t NetAddress[2];					//Network Address
+	uint8_t pAddress[2];					//Parent Address
+	uint8_t dType;							//Device Type
+	uint8_t pID[2];							//Profile ID
+	uint8_t manID[2];							// Manufacturer ID
+}NodeDiscovery;
+
 extern XBeeModule XBeeData;
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim2;
