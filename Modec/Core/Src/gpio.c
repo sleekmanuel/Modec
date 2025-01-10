@@ -187,7 +187,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
   */
 void FlashLED(void)
 {
-    ToggleLED(500,5,1); // toggle PVD LED
+    ToggleLED(700,5,1); // toggle PVD LED
 }
 
 

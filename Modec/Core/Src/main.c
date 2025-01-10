@@ -85,6 +85,7 @@ uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
 uint64_t flashData =0;
 uint8_t deviceCount = 1;
+int DestIndex = 0;
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
@@ -102,6 +103,7 @@ XBeeModule XBeeData =
 };
 
 NodeDiscovery newNode[MAX_DEVICES];
+NodeDiscovery router;
 //create instance of XBeeModule typedef struct
 /* USER CODE END PV */
 
@@ -188,6 +190,26 @@ int main(void)
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
 
+  //search discovered node for it's router
+  for(int a = 1; a <= deviceCount; a++)
+  {
+	  if(memcmp(newNode[a].NodeID, "Switch01", sizeof("Switch01")) == 0)		//Check for a device counterpart
+	  {
+		  if(memcmp(newNode[a].dType, "01", sizeof(newNode[a].dType)) == 0)		//Check if device is a router
+		  {
+			  DestIndex = a;		//store router index
+			  break;
+		  }else{
+			  printf("Device is not a Router");
+		  }
+
+	  }else{
+		  printf("Router Device not found");
+	  }
+  }
+
+  //copy information found as router Device to a new router struct
+  memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
 
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   //    // Indicate Device is ready to run
