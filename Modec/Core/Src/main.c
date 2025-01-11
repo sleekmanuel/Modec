@@ -78,14 +78,14 @@ typedef struct
 
 /* USER CODE BEGIN PV */
 
-uint8_t txData_Presence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0F, 0x0D};
-uint8_t txData_NoPresence[11] = {0x34, 0x32, 0x32, 0x36, 0x38, 0x30, 0x30, 0x38, 0xC0, 0x0A, 0x0D};
+uint8_t txData_Presence[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0xC0, 0x0F, 0x0D};
+uint8_t txData_NoPresence[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0xC0, 0x0A, 0x0D};
 uint8_t loadStatus = 0;
 uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
 uint64_t flashData =0;
 uint8_t deviceCount = 1;
-int DestIndex = 0;
+volatile uint8_t DestIndex = 15; 	//initialized with arbitary number above MAX DEVICE
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
@@ -184,33 +184,56 @@ int main(void)
    .........................................*/
 
   enterCommandMode();
-  XBee_NodeDiscovery();
+  if(XBee_NodeDiscovery() != XBEE_SUCCESS)
+  {
+	  while(1){
+		  HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
+		  HAL_Delay(500);
+	  }
+  }
   exitCommandMode();
 
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
 
   //search discovered node for it's router
-  for(int a = 1; a <= deviceCount; a++)
+  for(int a = 0; a < deviceCount; a++)
   {
-	  if(memcmp(newNode[a].NodeID, "Switch01", sizeof("Switch01")) == 0)		//Check for a device counterpart
+	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
 	  {
-		  if(memcmp(newNode[a].dType, "01", sizeof(newNode[a].dType)) == 0)		//Check if device is a router
+		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
 		  {
 			  DestIndex = a;		//store router index
+			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+			  HAL_Delay(3000);
+			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
+			   HAL_Delay(3000);
 			  break;
 		  }else{
-			  printf("Device is not a Router");
+			  printf("Device %d is not a Router\n", a);
+			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
 		  }
 
 	  }else{
-		  printf("Router Device not found");
+		  printf("Node %d does not match 'Switch01'\n", a);
+
 	  }
   }
 
-  //copy information found as router Device to a new router struct
-  memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
 
+  // Handle case where no router is found
+  if (DestIndex == 15)
+  {
+      printf("No router found. Exiting.\n");
+      // Handle the error (e.g., retry discovery or halt)
+      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
+  }else{
+      // Copy router details
+      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
+      //copy router address to presence and no presence data
+      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
+      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
+  }
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   //    // Indicate Device is ready to run
   //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
@@ -297,11 +320,11 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK)
   {
     Error_Handler();
   }

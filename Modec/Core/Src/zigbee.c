@@ -322,17 +322,25 @@ void RQSleepMode()
  * including its addresses, Node Identifier, parent address, and other parameters.
  * it also increments ny1 the number of devices found
  */
-void XBee_NodeDiscovery()
+int XBee_NodeDiscovery()
 {
 	// Clear buffer and reset flag
 	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 	  XBeeData.data_received_flag = 0;
 
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"ATND\r", 5, 1000); // send command for ATND
-	  HAL_Delay(200);
+	  HAL_Delay(2000);
 	  HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
 	  for(int i = 0; i < MAX_DEVICES; i++){
-		  while (!XBeeData.data_received_flag);
+		  //implement timeout for xbee response
+		  start_time = HAL_GetTick();
+		  while (!XBeeData.data_received_flag)
+		  {
+		      if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION)
+		      {
+		         return XBEE_TIMEOUT_ERROR;
+		      }
+		  }
 		  if(memcmp(XBeeData.rx_buffer, "\r", 1) == 0) break; //end of discovery
 		  memcpy(newNode[i].NetAddress, XBeeData.rx_buffer, sizeof(newNode[i].NetAddress)); // store Network Address
 		  //clear buffer and reset flag
@@ -387,11 +395,9 @@ void XBee_NodeDiscovery()
 		  deviceCount++; //increment # of devices discovered
 
 		    // Check if the maximum device limit is reached
-		    if (deviceCount >= MAX_DEVICES)
-		    {
-		        break;
-		    }
+		    if (deviceCount >= MAX_DEVICES) break;
 	  }
+	  return XBEE_SUCCESS;
 }
 
 /**

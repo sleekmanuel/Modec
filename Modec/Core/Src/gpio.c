@@ -128,7 +128,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	         /* Check if enough time has passed since the last press to consider this a valid press */
 	         if((currentTime - lastDebounceTime) >= DEBOUNCE_DELAY_MS)
 	         {
-	        	 if(!loadStatus){
+	        	 if(!loadStatus)
+	        	 {
 	        		 if(TIM2->CNT > 0)
 	        		 {
 	        			 TIM2->CNT = 0; //Reset timer
