@@ -38,6 +38,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "i2c.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -153,6 +154,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
@@ -162,7 +164,7 @@ int main(void)
    * STORE FLASHDATA FOR SERIAL DATA LOW FOR OPERATIONAL USE
    */
   // Request and store XBee serial low
-  //RequestAndStoreSerialLow();
+//     RequestAndStoreSerialLow();
 
 
   /*..........Set Destination Address..........
@@ -183,57 +185,52 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 
-  enterCommandMode();
-  if(XBee_NodeDiscovery() != XBEE_SUCCESS)
-  {
-	  while(1){
-		  HAL_GPIO_TogglePin(Error_GPIO_Port, Error_Pin);
-		  HAL_Delay(500);
-	  }
-  }
-  exitCommandMode();
+  //enterCommandMode();
+  // Clear buffer and reset flag
 
-  flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
-  uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
-
-  //search discovered node for it's router
-  for(int a = 0; a < deviceCount; a++)
-  {
-	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
-	  {
-		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
-		  {
-			  DestIndex = a;		//store router index
-			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-			  HAL_Delay(3000);
-			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
-			   HAL_Delay(3000);
-			  break;
-		  }else{
-			  printf("Device %d is not a Router\n", a);
-			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-		  }
-
-	  }else{
-		  printf("Node %d does not match 'Switch01'\n", a);
-
-	  }
-  }
-
-
-  // Handle case where no router is found
-  if (DestIndex == 15)
-  {
-      printf("No router found. Exiting.\n");
-      // Handle the error (e.g., retry discovery or halt)
-      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
-  }else{
-      // Copy router details
-      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
-      //copy router address to presence and no presence data
-      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
-      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
-  }
+ // exitCommandMode();
+//
+//  flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
+//  uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
+//
+//  //search discovered node for it's router
+//  for(int a = 0; a < deviceCount; a++)
+//  {
+//	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
+//	  {
+//		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
+//		  {
+//			  DestIndex = a;		//store router index
+//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+//			  HAL_Delay(3000);
+//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
+//			   HAL_Delay(3000);
+//			  break;
+//		  }else{
+//			  printf("Device %d is not a Router\n", a);
+//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+//		  }
+//
+//	  }else{
+//		  printf("Node %d does not match 'Switch01'\n", a);
+//
+//	  }
+//  }
+//
+//
+//  // Handle case where no router is found
+//  if (DestIndex == 15)
+//  {
+//      printf("No router found. Exiting.\n");
+//      // Handle the error (e.g., retry discovery or halt)
+//      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
+//  }else{
+//      // Copy router details
+//      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
+//      //copy router address to presence and no presence data
+//      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
+//      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
+//  }
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
   //    // Indicate Device is ready to run
   //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
@@ -243,36 +240,45 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  SetLowPowerMode(1);  // Enable low power
+ // SetLowPowerMode(1);  // Enable low power
   while (1)
   {
- 	  if(XBeeData.data_received_flag)
-	  {		//get zigbee message from xbee module
- 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
-		  receivedMessage.Control = XBeeData.rx_buffer[8];
-		  receivedMessage.Data = XBeeData.rx_buffer[9];
-		  //Check if the message is meant for me
-		  if(memcmp(XBeeData.myAddress, receivedMessage.DestAddress, 8) == 0)
-		  {
+	  /*Configure GPIO pin Output Level */
+	  HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_SET);
 
-			  if(receivedMessage.Control == 0xB3)
-			  {
-				  if(receivedMessage.Data == 0x11)
-				 {
-				 	loadStatus = 1;					// Feedback: Load is active
-				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
+	  /*Configure GPIO pin Output Level */
+	  HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
 
-				 }else if(receivedMessage.Data == 0xAA)
-				 	{
-					 	 loadStatus = 0;			// Feedback: Load is inactive
-					 	 SetLowPowerMode(1);  // Enable low power on no presence
-				 	}else
-				 	{;}
-			  	}
-	     }
-		  XBeeData.data_received_flag = 0;  // resets received status to expect new data
-		 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
-	  }
+	  /*Configure GPIO pin Output Level */
+	  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+
+// 	  if(XBeeData.data_received_flag)
+//	  {		//get zigbee message from xbee module
+// 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
+//		  receivedMessage.Control = XBeeData.rx_buffer[8];
+//		  receivedMessage.Data = XBeeData.rx_buffer[9];
+//		  //Check if the message is meant for me
+//		  if(memcmp(XBeeData.myAddress, receivedMessage.DestAddress, 8) == 0)
+//		  {
+//
+//			  if(receivedMessage.Control == 0xB3)
+//			  {
+//				  if(receivedMessage.Data == 0x11)
+//				 {
+//				 	loadStatus = 1;					// Feedback: Load is active
+//				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
+//
+//				 }else if(receivedMessage.Data == 0xAA)
+//				 	{
+//					 	 loadStatus = 0;			// Feedback: Load is inactive
+//					 	// SetLowPowerMode(1);  // Enable low power on no presence
+//				 	}else
+//				 	{;}
+//			  	}
+//	     }
+//		  XBeeData.data_received_flag = 0;  // resets received status to expect new data
+//		 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
+	  //}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

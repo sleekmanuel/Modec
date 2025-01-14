@@ -91,15 +91,25 @@ void IndicateErrorAndReset(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define Active_LED_Pin GPIO_PIN_14
+#define Active_LED_GPIO_Port GPIOC
 #define PIR_Pin GPIO_PIN_0
 #define PIR_GPIO_Port GPIOA
 #define PIR_EXTI_IRQn EXTI0_IRQn
+#define BUZZER_Pin GPIO_PIN_3
+#define BUZZER_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_6
 #define LED_GPIO_Port GPIOA
 #define Error_Pin GPIO_PIN_0
 #define Error_GPIO_Port GPIOB
 #define XBEE_SLEEP_Pin GPIO_PIN_8
 #define XBEE_SLEEP_GPIO_Port GPIOA
+#define Button_Pin GPIO_PIN_12
+#define Button_GPIO_Port GPIOA
+#define Button_EXTI_IRQn EXTI15_10_IRQn
+#define Temp_Alert_Pin GPIO_PIN_5
+#define Temp_Alert_GPIO_Port GPIOB
+#define Temp_Alert_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 void SetLowPowerMode(uint8_t enable);
