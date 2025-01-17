@@ -23,6 +23,7 @@
 
 /* USER CODE BEGIN 0 */
 volatile uint32_t lastDebounceTime = 0;
+uint8_t tempSpike_flag = 0;		//flag for a spike in ambient temperature
 /* USER CODE END 0 */
 
 /*----------------------------------------------------------------------------*/
@@ -56,7 +57,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, BUZZER_Pin|LED_Pin|XBEE_SLEEP_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, LED_Pin|XBEE_SLEEP_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
@@ -88,8 +89,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PAPin PAPin PAPin */
-  GPIO_InitStruct.Pin = BUZZER_Pin|LED_Pin|XBEE_SLEEP_Pin;
+  /*Configure GPIO pins : PAPin PAPin */
+  GPIO_InitStruct.Pin = LED_Pin|XBEE_SLEEP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -110,7 +111,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = Temp_Alert_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Temp_Alert_GPIO_Port, &GPIO_InitStruct);
 
@@ -138,9 +139,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  /* If detection pin is active, delay for 1 ms ...
   *
  */
-   		if(GPIO_Pin == PIR_Pin)
+   		if(GPIO_Pin == PIR_Pin && !tempSpike_flag)
 	     {
-   			SetLowPowerMode(0); //Exit Low Power Mode
+   			//SetLowPowerMode(0); //Exit Low Power Mode
 	         /* Get the current time (in milliseconds) */
 	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
 	         /* Check if enough time has passed since the last press to consider this a valid press */
@@ -166,8 +167,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	 }
 	        	 lastDebounceTime = currentTime;   /* Update the last debounce time */
 	         }
+	     }else if(tempSpike_flag){
+	   		 //SetLowPowerMode(0); //Exit Low Power Mode
+	    	 tempSpike_flag = 0;
+	   		// SetLowPowerMode(1); //Enter Low Power Mode
 	     }
 
+   		if(GPIO_Pin == Temp_Alert_Pin)  	//Temperature interrupt triggered
+   		{
+   			//SetLowPowerMode(0); //Exit Low Power Mode
+   			tempSpike_flag = 1;
+   			//SetLowPowerMode(1); //Enter Low Power Mode
+   		}
 }
 
 
@@ -182,12 +193,12 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
 {
    if(PVD)
    {
-		for (uint8_t i = 0; i < count; i++)
+		while (1)
         {
-			HAL_GPIO_WritePin(GPIOA, LED_Pin,1);
-			HAL_Delay(delay_ms);
-			HAL_GPIO_WritePin(GPIOA, LED_Pin,0);
-			HAL_Delay(delay_ms);
+			  HAL_Delay(delay_ms);
+			  HAL_TIM_PWM_Start(&htim15, TIM_CHANNEL_2);
+			  HAL_Delay(delay_ms);
+			  HAL_TIM_PWM_Stop(&htim15, TIM_CHANNEL_2);
         }
    }else
    {
@@ -206,7 +217,7 @@ void ToggleLED(uint16_t delay_ms, uint8_t count, uint8_t PVD)
   */
 void FlashLED(void)
 {
-    ToggleLED(700,5,1); // toggle PVD LED
+    ToggleLED(100,5,1); // toggle PVD LED
 }
 
 

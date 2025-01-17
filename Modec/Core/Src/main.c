@@ -52,6 +52,7 @@
 #include <stddef.h>
 #include <zigbee.h>
 #include <stdlib.h>
+#include <mcp9808.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -87,6 +88,11 @@ uint64_t serialLow = 0;
 uint64_t flashData =0;
 uint8_t deviceCount = 1;
 volatile uint8_t DestIndex = 15; 	//initialized with arbitary number above MAX DEVICE
+float ambientTemperature = 0.0f;			//Ambient temperature reading
+uint8_t tempRead = 0;				//initialize temperature reading status
+uint8_t tUpper;						//Upper temperature limit
+uint8_t tLower;						//lower temperature limit
+uint8_t tCritical;					//critical temperature limit
 
 ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
 {
@@ -155,6 +161,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM2_Init();
   MX_I2C1_Init();
+  MX_TIM15_Init();
   /* USER CODE BEGIN 2 */
 
   /* --------------------------Zigbee Configuration Begin-----------------------------------------*/
@@ -164,7 +171,7 @@ int main(void)
    * STORE FLASHDATA FOR SERIAL DATA LOW FOR OPERATIONAL USE
    */
   // Request and store XBee serial low
-//     RequestAndStoreSerialLow();
+   //  RequestAndStoreSerialLow();
 
 
   /*..........Set Destination Address..........
@@ -185,57 +192,101 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 
-  //enterCommandMode();
-  // Clear buffer and reset flag
+  enterCommandMode();
+  XBee_NodeDiscovery();
+  exitCommandMode();
+//
+  flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
+  uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
 
- // exitCommandMode();
-//
-//  flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
-//  uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
-//
-//  //search discovered node for it's router
-//  for(int a = 0; a < deviceCount; a++)
-//  {
-//	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
-//	  {
-//		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
-//		  {
-//			  DestIndex = a;		//store router index
-//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-//			  HAL_Delay(3000);
-//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
-//			   HAL_Delay(3000);
-//			  break;
-//		  }else{
-//			  printf("Device %d is not a Router\n", a);
-//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-//		  }
-//
-//	  }else{
-//		  printf("Node %d does not match 'Switch01'\n", a);
-//
-//	  }
-//  }
-//
-//
-//  // Handle case where no router is found
-//  if (DestIndex == 15)
-//  {
-//      printf("No router found. Exiting.\n");
-//      // Handle the error (e.g., retry discovery or halt)
-//      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
-//  }else{
-//      // Copy router details
-//      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
-//      //copy router address to presence and no presence data
-//      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
-//      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
-//  }
+  //search discovered node for it's router
+  for(int a = 0; a < deviceCount; a++)
+  {
+	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
+	  {
+		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
+		  {
+			  DestIndex = a;		//store router index
+			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+			  HAL_Delay(3000);
+			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
+			   HAL_Delay(3000);
+			  break;
+		  }else{
+			  printf("Device %d is not a Router\n", a);
+			 // HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+		  }
+
+	  }else{
+		  printf("Node %d does not match 'Switch01'\n", a);
+
+	  }
+  }
+
+
+  // Handle case where no router is found
+  if (DestIndex == 15)
+  {
+      printf("No router found. Exiting.\n");
+      // Handle the error (e.g., retry discovery or halt)
+      //HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
+  }else{
+      // Copy router details
+      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
+      //copy router address to presence and no presence data
+      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
+      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
+ }
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
+
+
+
+  /* --------------------------MCP9808 Configuration Start-------------------------------------------*/
+
+  if (MCP9808_IsConnected() == HAL_OK) {
+      // Initialize the temperature sensor
+      if (MCP9808_Init() == HAL_OK) {
+
+          // Read ambient temperature
+          while (!tempRead) {
+              if (MCP9808_ReadTemperature(&ambientTemperature) == HAL_OK) {
+                  tempRead = 1; // Successfully read temperature
+              } else {
+                  // Handle error (blink error LED)
+                  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+                  HAL_Delay(3000);
+                  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+              }
+          }
+
+          // Set thresholds
+          tUpper = ambientTemperature + 10;
+          tLower = ambientTemperature - 10;
+          tCritical = ambientTemperature + 30;
+
+          if (MCP9808_ConfigureInterrupts(tUpper, tLower, tCritical) != HAL_OK) {
+              // Handle configuration error
+              HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+              HAL_Delay(3000);
+              HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+          }
+      } else {
+          HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+          HAL_Delay(3000);
+          HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+      }
+  } else {
+      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+      HAL_Delay(3000);
+      HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_RESET);
+  }
+
+ /* --------------------------MCP9808 Configuration End-------------------------------------------*/
+
   //    // Indicate Device is ready to run
-  //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_SET);
   //    HAL_Delay(1000);
-  //    HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET);
+  //    HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -243,42 +294,37 @@ int main(void)
  // SetLowPowerMode(1);  // Enable low power
   while (1)
   {
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_SET);
+//	  /*Configure GPIO pin Output Level */
+//	  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+//	  HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
 
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
+ 	  if(XBeeData.data_received_flag)
+	  {		//get zigbee message from xbee module
+ 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
+		  receivedMessage.Control = XBeeData.rx_buffer[8];
+		  receivedMessage.Data = XBeeData.rx_buffer[9];
+		  //Check if the message is meant for me
+		  if(memcmp(XBeeData.myAddress, receivedMessage.DestAddress, 8) == 0)
+		  {
 
-	  /*Configure GPIO pin Output Level */
-	  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
+			  if(receivedMessage.Control == 0xB3)
+			  {
+				  if(receivedMessage.Data == 0x11)
+				 {
+				 	loadStatus = 1;					// Feedback: Load is active
+				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
 
-// 	  if(XBeeData.data_received_flag)
-//	  {		//get zigbee message from xbee module
-// 		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
-//		  receivedMessage.Control = XBeeData.rx_buffer[8];
-//		  receivedMessage.Data = XBeeData.rx_buffer[9];
-//		  //Check if the message is meant for me
-//		  if(memcmp(XBeeData.myAddress, receivedMessage.DestAddress, 8) == 0)
-//		  {
-//
-//			  if(receivedMessage.Control == 0xB3)
-//			  {
-//				  if(receivedMessage.Data == 0x11)
-//				 {
-//				 	loadStatus = 1;					// Feedback: Load is active
-//				 	HAL_TIM_Base_Start_IT(&htim2);     /* Start 15 secs timer */
-//
-//				 }else if(receivedMessage.Data == 0xAA)
-//				 	{
-//					 	 loadStatus = 0;			// Feedback: Load is inactive
-//					 	// SetLowPowerMode(1);  // Enable low power on no presence
-//				 	}else
-//				 	{;}
-//			  	}
-//	     }
-//		  XBeeData.data_received_flag = 0;  // resets received status to expect new data
-//		 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
-	  //}
+				 }else if(receivedMessage.Data == 0xAA)
+				 	{
+					 	 loadStatus = 0;			// Feedback: Load is inactive
+					 	// SetLowPowerMode(1);  // Enable low power on no presence
+				 	}else
+				 	{;}
+			  	}
+	     }
+		  XBeeData.data_received_flag = 0;  // resets received status to expect new data
+		 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);  // Continue receiving
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -403,6 +449,7 @@ void SetLowPowerMode(uint8_t enable)
         HAL_PWR_DisableSleepOnExit();
     }
 }
+/* --------------------------Flash Programming Start-------------------------------------------*/
 
 /*
  *  @brief Store XBEE serial number to flash memory
@@ -488,6 +535,7 @@ void WriteFlash(uint32_t address, uint64_t data)
 
     HAL_FLASH_Lock();
 }
+/* --------------------------Flash Programming End-------------------------------------------*/
 
 
 /**
@@ -498,9 +546,7 @@ void GracefulShutdown(void)
     // Safely shut down peripherals or save data here before reset
     HAL_UART_DeInit(&huart1); // Deinitialize UART
     HAL_TIM_Base_Stop_IT(&htim2); // Stop Timer 2
-   // HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_RESET); // Turn off LED
-
-
+    HAL_I2C_MspDeInit(&hi2c1);	//Deinitialize i2c
 
     HAL_Delay(500); // Allow time for final tasks
 }
@@ -526,7 +572,7 @@ void Error_Handler(void)
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   //Visual Display in Error mode. Blink LED continuously
-  	 ToggleLED(100, 5, 0); //Toggle Error LED
+  	 ToggleLED(100, 10, 0); //Toggle Error LED
 	 IndicateErrorAndReset();
   /* USER CODE END Error_Handler_Debug */
 }

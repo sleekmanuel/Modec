@@ -64,6 +64,7 @@ typedef struct {
 extern XBeeModule XBeeData;
 extern UART_HandleTypeDef huart1;
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim15;
 extern NodeDiscovery newNode[MAX_DEVICES];
 extern uint8_t txData_Presence[11];
 extern uint8_t txData_NoPresence[11];
@@ -96,8 +97,6 @@ void IndicateErrorAndReset(void);
 #define PIR_Pin GPIO_PIN_0
 #define PIR_GPIO_Port GPIOA
 #define PIR_EXTI_IRQn EXTI0_IRQn
-#define BUZZER_Pin GPIO_PIN_3
-#define BUZZER_GPIO_Port GPIOA
 #define LED_Pin GPIO_PIN_6
 #define LED_GPIO_Port GPIOA
 #define Error_Pin GPIO_PIN_0
