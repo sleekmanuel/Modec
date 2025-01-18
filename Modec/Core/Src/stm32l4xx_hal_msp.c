@@ -82,7 +82,7 @@ void HAL_MspInit(void)
   /** PVD Configuration
   */
   sConfigPVD.PVDLevel = PWR_PVDLEVEL_0;
-  sConfigPVD.Mode = PWR_PVD_MODE_IT_RISING_FALLING;
+  sConfigPVD.Mode = PWR_PVD_MODE_IT_RISING;
   HAL_PWR_ConfigPVD(&sConfigPVD);
 
   /** Enable the PVD Output

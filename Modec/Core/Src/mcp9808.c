@@ -18,6 +18,14 @@
 extern I2C_HandleTypeDef hi2c1;
 
 /**
+ * @brief Check if MCP9808 is connected.
+ * @return HAL status
+ */
+HAL_StatusTypeDef MCP9808_IsConnected(void) {
+    return HAL_I2C_IsDeviceReady(&hi2c1, MCP9808_ADDR << 1, 5, 2000);
+}
+
+/**
  * @brief Initialize the MCP9808 sensor.
  * @return HAL status
  */
@@ -102,8 +110,14 @@ HAL_StatusTypeDef MCP9808_ConfigureInterrupts(float upper_threshold, float lower
         return HAL_ERROR;
     }
 
-    // Enable interrupt functionality
-    uint8_t config_data[3] = {MCP9808_REG_CONFIG, (MCP9808_CONFIG_INT_ENABLE | MCP9808_CONFIG_ALERT_ACTIVE_LOW) >> 8, (MCP9808_CONFIG_INT_ENABLE | MCP9808_CONFIG_ALERT_ACTIVE_LOW) & 0xFF};
+    uint16_t config_value = MCP9808_CONFIG_INT_ENABLE | MCP9808_CONFIG_ALERT_ACTIVE_LOW;
+
+    uint8_t config_data[3] = {
+        MCP9808_REG_CONFIG,
+        (config_value >> 8) & 0xFF, // MSB
+        config_value & 0xFF         // LSB
+    };
+
     if (HAL_I2C_Master_Transmit(&hi2c1, MCP9808_ADDR << 1, config_data, 3, HAL_MAX_DELAY) != HAL_OK) {
         return HAL_ERROR;
     }
@@ -111,10 +125,3 @@ HAL_StatusTypeDef MCP9808_ConfigureInterrupts(float upper_threshold, float lower
     return HAL_OK;
 }
 
-/**
- * @brief Check if MCP9808 is connected.
- * @return HAL status
- */
-HAL_StatusTypeDef MCP9808_IsConnected(void) {
-    return HAL_I2C_IsDeviceReady(&hi2c1, MCP9808_ADDR << 1, 5, 2000);
-}

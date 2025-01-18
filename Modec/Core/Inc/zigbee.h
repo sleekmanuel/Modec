@@ -26,9 +26,11 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 void setDestinationAddress(uint32_t DH, uint32_t DL);
 void TxPowerLevel(uint8_t Level);
 void RQPowerLevel();
+int setParameter(const char *at_command);
 void SleepMode(uint8_t Level);
 void RQSleepMode();
 int XBee_NodeDiscovery(void);
+void FactoryReset(void);
 void exitCommandMode(void);
 
 

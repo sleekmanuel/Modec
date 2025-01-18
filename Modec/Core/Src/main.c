@@ -191,52 +191,52 @@ int main(void)
    * TxPowerLevel(2); SET
    * RQPowerLevel();  CHECK
    .........................................*/
-
+//
   enterCommandMode();
   XBee_NodeDiscovery();
-  exitCommandMode();
-//
+  //exitCommandMode();
+////
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
-
-  //search discovered node for it's router
-  for(int a = 0; a < deviceCount; a++)
-  {
-	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
-	  {
-		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
-		  {
-			  DestIndex = a;		//store router index
-			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-			  HAL_Delay(3000);
-			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
-			   HAL_Delay(3000);
-			  break;
-		  }else{
-			  printf("Device %d is not a Router\n", a);
-			 // HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
-		  }
-
-	  }else{
-		  printf("Node %d does not match 'Switch01'\n", a);
-
-	  }
-  }
-
-
-  // Handle case where no router is found
-  if (DestIndex == 15)
-  {
-      printf("No router found. Exiting.\n");
-      // Handle the error (e.g., retry discovery or halt)
-      //HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
-  }else{
-      // Copy router details
-      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
-      //copy router address to presence and no presence data
-      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
-      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
- }
+//
+//  //search discovered node for it's router
+//  for(int a = 0; a < deviceCount; a++)
+//  {
+//	  if(strncmp(newNode[a].NodeID, "Switch01", strlen("Switch01")) == 0)		//Check for a device counterpart
+//	  {
+//		  if(memcmp(newNode[a].dType, "01", 2) == 0)		//Check if device is a router
+//		  {
+//			  DestIndex = a;		//store router index
+//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+//			  HAL_Delay(3000);
+//			  HAL_GPIO_WritePin(GPIOA, LED_Pin, 0);
+//			   HAL_Delay(3000);
+//			  break;
+//		  }else{
+//			  printf("Device %d is not a Router\n", a);
+//			 // HAL_GPIO_WritePin(GPIOA, LED_Pin, 1);
+//		  }
+//
+//	  }else{
+//		  printf("Node %d does not match 'Switch01'\n", a);
+//
+//	  }
+//  }
+//
+//
+//  // Handle case where no router is found
+//  if (DestIndex == 15)
+//  {
+//      printf("No router found. Exiting.\n");
+//      // Handle the error (e.g., retry discovery or halt)
+//      //HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, 1);
+//  }else{
+//      // Copy router details
+//      memcpy(&router, &newNode[DestIndex], sizeof(NodeDiscovery));
+//      //copy router address to presence and no presence data
+//      memcpy(txData_Presence, router.SerialLow, ADDRESS_SIZE);
+//      memcpy(txData_NoPresence, router.SerialLow, ADDRESS_SIZE);
+// }
   /* --------------------------Zigbee Configuration End-------------------------------------------*/
 
 

@@ -77,8 +77,6 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     char command_mode[] = "+++";
     char exit_command[] = "ATCN\r";
 
-    // Define timeout duration (in milliseconds)
-   // const uint32_t timeout_duration = 2000; // 2 seconds
 
     // Enter AT command mode
     HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
@@ -121,7 +119,69 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
     return strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0 ? XBEE_SUCCESS : XBEE_ERROR_RESPONSE;
 }
 
+/**
+ * @brief  Enter XBee AT Command Mode and set new config parameter and exit. returns int response
+ * @param at_command: AT command to enter with parameter to set
+ *
+ */
 
+int setParameter(const char *at_command)
+{
+    // Clear buffer and reset flag
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+    XBeeData.data_received_flag = 0;
+
+    char command_mode[] = "+++";
+    char write_command[] = "ATWR\r";
+    char exit_command[] = "ATCN\r";
+
+    // Enter AT command mode
+    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
+    HAL_Delay(1000);
+    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 3);
+
+    // Send the parameter request command
+    XBeeData.data_received_flag = 0;
+    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+    HAL_UART_Transmit(&huart1, (uint8_t *)at_command, strlen(at_command), HAL_MAX_DELAY);
+    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+
+    //implement timeout for xbee response
+    start_time = HAL_GetTick();
+    while (!XBeeData.data_received_flag)
+    {
+        if ((HAL_GetTick() - start_time) >= XBEE_TIMEOUT_DURATION)
+        {
+            return XBEE_TIMEOUT_ERROR;
+        }
+    }
+
+    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+    {
+    	 // Reset flag and buffer
+    	 XBeeData.data_received_flag = 0;
+    	 memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+
+    	 // Save changes with ATWR command
+    	 HAL_UART_Transmit(&huart1, (uint8_t *)write_command, strlen(write_command), HAL_MAX_DELAY);
+    	 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+
+    	 // Wait for reception to complete
+    	 while (!XBeeData.data_received_flag);
+    	 if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0){
+        	 // Reset flag and buffer
+        	 XBeeData.data_received_flag = 0;
+        	 memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+        	 // Exit AT command mode
+        	 HAL_UART_Transmit(&huart1, (uint8_t *)exit_command, strlen(exit_command), HAL_MAX_DELAY);
+        	 HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+        	 // Wait for reception to complete
+        	 while (!XBeeData.data_received_flag);
+    	 }
+    }
+
+    return strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0 ? XBEE_SUCCESS : XBEE_ERROR_RESPONSE;
+}
 
 /**
  * @brief  Set XBee Destination Address using ATDH and ATDL commands.
@@ -398,6 +458,36 @@ int XBee_NodeDiscovery()
 		    if (deviceCount >= MAX_DEVICES) break;
 	  }
 	  return XBEE_SUCCESS;
+}
+/*
+ * Factory reset chip. Enter command mode and Exit with independent functions
+ */
+void FactoryReset(){
+	// Clear rx_buffer and reset the data_received_flag
+	memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	XBeeData.data_received_flag = 0;
+	char at_command[] = "ATRE\r";  // Command for factory reset
+	char write[] = "ATWR\r";		// Command to write to NVMe
+	//send ATPL command
+	HAL_UART_Transmit(&huart1, (uint8_t*)at_command, strlen(at_command), HAL_MAX_DELAY);
+	HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	while (!XBeeData.data_received_flag);
+	if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0)
+	    {
+			XBeeData.data_received_flag = 0;
+	        memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	        HAL_UART_Transmit(&huart1, (uint8_t*)write, strlen(write), HAL_MAX_DELAY);
+	        HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
+	        // Wait for reception to complete
+	        while (!XBeeData.data_received_flag);
+	        if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0)
+	        {
+	        	// Handle memory write failure
+	             printf("Failed to write changes to memory!\n");
+	       }
+	    }
+	    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
+	    XBeeData.data_received_flag = 0;
 }
 
 /**
