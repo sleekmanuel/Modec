@@ -384,6 +384,14 @@ void RQSleepMode()
  */
 int XBee_NodeDiscovery()
 {
+
+//    char command_mode[] = "+++";
+//
+//    // Enter AT command mode
+//    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
+//    HAL_Delay(1000);
+//    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 3);
+
 	// Clear buffer and reset flag
 	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 	  XBeeData.data_received_flag = 0;

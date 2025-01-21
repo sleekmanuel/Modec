@@ -110,18 +110,31 @@ HAL_StatusTypeDef MCP9808_ConfigureInterrupts(float upper_threshold, float lower
         return HAL_ERROR;
     }
 
-    uint16_t config_value = MCP9808_CONFIG_INT_ENABLE | MCP9808_CONFIG_ALERT_ACTIVE_LOW;
+    // Read the current configuration register
+    uint8_t config_reg = MCP9808_REG_CONFIG;
+    uint8_t config_data[2];
+    if (HAL_I2C_Master_Transmit(&hi2c1, MCP9808_ADDR << 1, &config_reg, 1, HAL_MAX_DELAY) != HAL_OK) {
+        return HAL_ERROR;
+    }
+    if (HAL_I2C_Master_Receive(&hi2c1, MCP9808_ADDR << 1, config_data, 2, HAL_MAX_DELAY) != HAL_OK) {
+        return HAL_ERROR;
+    }
 
-    uint8_t config_data[3] = {
+    // Modify the configuration register to enable interrupts and set alert polarity
+    uint16_t config_value = ((config_data[0] << 8) | config_data[1]);
+    config_value |= (1 << 4);  // INT_EN (bit 4)
+    config_value &= ~(1 << 2); // ALERT_POL (bit 2, active low)
+
+    // Write back the updated configuration
+    uint8_t config_update[3] = {
         MCP9808_REG_CONFIG,
         (config_value >> 8) & 0xFF, // MSB
         config_value & 0xFF         // LSB
     };
 
-    if (HAL_I2C_Master_Transmit(&hi2c1, MCP9808_ADDR << 1, config_data, 3, HAL_MAX_DELAY) != HAL_OK) {
+    if (HAL_I2C_Master_Transmit(&hi2c1, MCP9808_ADDR << 1, config_update, 3, HAL_MAX_DELAY) != HAL_OK) {
         return HAL_ERROR;
     }
 
     return HAL_OK;
 }
-

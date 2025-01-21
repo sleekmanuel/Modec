@@ -80,13 +80,13 @@ typedef struct
 
 /* USER CODE BEGIN PV */
 
-uint8_t txData_Presence[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0xC0, 0x0F, 0x0D};
-uint8_t txData_NoPresence[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0xC0, 0x0A, 0x0D};
+uint8_t txData_Presence[11] = {52, 50, 50, 54, 56, 48, 48, 56, 0xC0, 0x0F, 0x0D};
+uint8_t txData_NoPresence[11] = {52, 50, 50, 54, 56, 48, 48, 56, 0xC0, 0x0A, 0x0D};
 uint8_t loadStatus = 0;
 uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
 uint64_t flashData =0;
-uint8_t deviceCount = 1;
+uint8_t deviceCount = 0;
 volatile uint8_t DestIndex = 15; 	//initialized with arbitary number above MAX DEVICE
 float ambientTemperature = 0.0f;			//Ambient temperature reading
 uint8_t tempRead = 0;				//initialize temperature reading status
@@ -192,10 +192,14 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 //
-  enterCommandMode();
-  XBee_NodeDiscovery();
-  //exitCommandMode();
-////
+  //enterCommandMode();
+  //requestParameter("ATDL\r", serialLowBuffer, sizeof(serialLowBuffer));
+  //setParameter("ATDL 0x00\r");
+  //XBee_NodeDiscovery();
+  //FactoryReset();
+  //setDestinationAddress(0x00, 0xFFFF);
+ // exitCommandMode();
+
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array
 //
@@ -285,13 +289,13 @@ int main(void)
 
   //    // Indicate Device is ready to run
       HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_SET);
-  //    HAL_Delay(1000);
-  //    HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_RESET);
+      HAL_Delay(1000);
+      HAL_GPIO_WritePin(Active_LED_GPIO_Port, Active_LED_Pin, GPIO_PIN_RESET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
- // SetLowPowerMode(1);  // Enable low power
+  SetLowPowerMode(1);  // Enable low power
   while (1)
   {
 //	  /*Configure GPIO pin Output Level */
@@ -317,7 +321,7 @@ int main(void)
 				 }else if(receivedMessage.Data == 0xAA)
 				 	{
 					 	 loadStatus = 0;			// Feedback: Load is inactive
-					 	// SetLowPowerMode(1);  // Enable low power on no presence
+					 	 SetLowPowerMode(1);  // Enable low power on no presence
 				 	}else
 				 	{;}
 			  	}

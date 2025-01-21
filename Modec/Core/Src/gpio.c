@@ -111,7 +111,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : PtPin */
   GPIO_InitStruct.Pin = Temp_Alert_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Temp_Alert_GPIO_Port, &GPIO_InitStruct);
 
@@ -141,7 +141,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
  */
    		if(GPIO_Pin == PIR_Pin && !tempSpike_flag)
 	     {
-   			//SetLowPowerMode(0); //Exit Low Power Mode
+   			SetLowPowerMode(0); //Exit Low Power Mode
 	         /* Get the current time (in milliseconds) */
 	         uint32_t currentTime = HAL_GetTick(); // HAL_GetTick() returns the system time in ms
 	         /* Check if enough time has passed since the last press to consider this a valid press */
@@ -167,18 +167,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	        	 }
 	        	 lastDebounceTime = currentTime;   /* Update the last debounce time */
 	         }
-	     }else if(tempSpike_flag){
-	   		 //SetLowPowerMode(0); //Exit Low Power Mode
-	    	 tempSpike_flag = 0;
-	   		// SetLowPowerMode(1); //Enter Low Power Mode
 	     }
 
-   		if(GPIO_Pin == Temp_Alert_Pin)  	//Temperature interrupt triggered
-   		{
-   			//SetLowPowerMode(0); //Exit Low Power Mode
-   			tempSpike_flag = 1;
-   			//SetLowPowerMode(1); //Enter Low Power Mode
-   		}
 }
 
 
