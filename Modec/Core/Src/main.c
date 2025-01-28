@@ -94,8 +94,8 @@ uint8_t tUpper;						//Upper temperature limit
 uint8_t tLower;						//lower temperature limit
 uint8_t tCritical;					//critical temperature limit
 
-ZigbeeMessage receivedMessage = // Instance and Initialization of the ZigbeeMessage typedef structure
-{
+ZigbeeMessage receivedMessage =
+{		// Instance and Initialization of the ZigbeeMessage typedef structure
 		.Control = 0,
 		.Data = 0,
 		.DestAddress = {0}

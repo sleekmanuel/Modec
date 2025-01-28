@@ -42,10 +42,7 @@
 
 uint32_t start_time;
 
-void xbee_wait()
-{
 
-}
 /**
  * @brief  Enter XBee AT Command Mode by sending "+++".
  */
@@ -70,18 +67,7 @@ void enterCommandMode(void)
 
 int requestParameter(const char *at_command, uint8_t *output_buffer, size_t length)
 {
-//    // Clear buffer and reset flag
-//    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-//    XBeeData.data_received_flag = 0;
-//
-//    char command_mode[] = "+++";
     char exit_command[] = "ATCN\r";
-
-
-//    // Enter AT command mode
-//    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-//    HAL_Delay(1000);
-//    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 3);
 
     // Send the parameter request command
     XBeeData.data_received_flag = 0;
@@ -127,18 +113,9 @@ int requestParameter(const char *at_command, uint8_t *output_buffer, size_t leng
 
 int setParameter(const char *at_command)
 {
-//    // Clear buffer and reset flag
-//    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-//    XBeeData.data_received_flag = 0;
-//
     char command_mode[] = "+++";
     char write_command[] = "ATWR\r";
     char exit_command[] = "ATCN\r";
-
-//    // Enter AT command mode
-//    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-//    HAL_Delay(1000);
-//    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 3);
 
     // Send the parameter request command
     XBeeData.data_received_flag = 0;
@@ -384,14 +361,6 @@ void RQSleepMode()
  */
 int XBee_NodeDiscovery()
 {
-
-//    char command_mode[] = "+++";
-//
-//    // Enter AT command mode
-//    HAL_UART_Transmit(&huart1, (uint8_t *)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-//    HAL_Delay(1000);
-//    HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 3);
-
 	// Clear buffer and reset flag
 	  memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
 	  XBeeData.data_received_flag = 0;
@@ -499,20 +468,7 @@ void factoryReset(){
 }
 
 int writeCommand(){
-//    // Clear rx_buffer and reset the data_received_flag
-//    memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
-//    XBeeData.data_received_flag = 0;
-//
-//    char command_mode[3] = "+++";  //Command to enter AT command mode
     char at_command[] = "ATWR\r";  // Command to write to XBEE EEPROM
-
-//    // Send "+++" to enter AT command mode
-//    HAL_UART_Transmit(&huart1, (uint8_t*)command_mode, strlen(command_mode), HAL_MAX_DELAY);
-//    HAL_Delay(1000);  // Small delay for XBee to respond
-//    HAL_UART_Receive_IT(&huart1,  &XBeeData.received_byte, 1);
-
-// while(!XBeeData.data_received_flag); //wait for Rx to complete
- //   if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0) {
              // Reset flag and buffer
     XBeeData.data_received_flag = 0;
     memset(XBeeData.rx_buffer, 0, DATA_BUFFER_SIZE);
@@ -521,12 +477,7 @@ int writeCommand(){
         	 // Receive the response (Serial Number Low)
     HAL_UART_Receive_IT(&huart1, &XBeeData.received_byte, 1);
     while(!XBeeData.data_received_flag); //wait for Rx to complete
-        	 // Check response for ATWR
-//    if (strncmp((char *)XBeeData.rx_buffer, "OK", 2) != 0) {
-//        // Handle memory write failure
-//     printf("Failed to write changes to memory!\n");
-//     }
- //       	  }
+
     return strncmp((char *)XBeeData.rx_buffer, "OK", 2) == 0 ? XBEE_SUCCESS : XBEE_ERROR_RESPONSE;
 }
 
