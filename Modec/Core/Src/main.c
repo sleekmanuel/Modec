@@ -86,7 +86,7 @@ uint8_t loadStatus = 0;
 uint8_t serialLowBuffer[8] = {0};
 uint64_t serialLow = 0;
 uint64_t flashData =0;
-uint8_t deviceCount = 0;
+uint8_t deviceCount = 1;
 volatile uint8_t DestIndex = 15; 	//initialized with arbitary number above MAX DEVICE
 float ambientTemperature = 0.0f;			//Ambient temperature reading
 uint8_t tempRead = 0;				//initialize temperature reading status
@@ -193,13 +193,13 @@ int main(void)
    .........................................*/
 //
   enterCommandMode();
-  requestParameter("ATdb\r", serialLowBuffer, sizeof(serialLowBuffer));
+  //requestParameter("ATdb\r", serialLowBuffer, sizeof(serialLowBuffer));
   //setParameter("ATSM1\r");
   //setParameter("ATID 1221\r");
   //setParameter("ATNJFF\r");
   //setParameter("ATSC0010\r");
  // writeCommand();
-  //XBee_NodeDiscovery();
+  XBee_NodeDiscovery();
   //factoryReset();
   //setDestinationAddress(ADDRESS_HIGH, 0x42268008);
   //setDestinationAddress(0x00, 0xFFFF);
@@ -303,10 +303,6 @@ int main(void)
   SetLowPowerMode(1);  // Enable low power
   while (1)
   {
-//	  /*Configure GPIO pin Output Level */
-//	  HAL_GPIO_WritePin(Error_GPIO_Port, Error_Pin, GPIO_PIN_SET);
-//	  HAL_GPIO_WritePin(GPIOA, LED_Pin, GPIO_PIN_SET);
-
  	  if(XBeeData.data_received_flag)
 	  {		//get zigbee message from xbee module
  		  memcpy(receivedMessage.DestAddress, XBeeData.rx_buffer, 8);	//copy destination address to zigbee message
