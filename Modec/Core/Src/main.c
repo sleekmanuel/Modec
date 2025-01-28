@@ -143,7 +143,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+   HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -192,13 +192,18 @@ int main(void)
    * RQPowerLevel();  CHECK
    .........................................*/
 //
-  //enterCommandMode();
-  //requestParameter("ATDL\r", serialLowBuffer, sizeof(serialLowBuffer));
-  //setParameter("ATDL 0x00\r");
+  enterCommandMode();
+  requestParameter("ATdb\r", serialLowBuffer, sizeof(serialLowBuffer));
+  //setParameter("ATSM1\r");
+  //setParameter("ATID 1221\r");
+  //setParameter("ATNJFF\r");
+  //setParameter("ATSC0010\r");
+ // writeCommand();
   //XBee_NodeDiscovery();
-  //FactoryReset();
+  //factoryReset();
+  //setDestinationAddress(ADDRESS_HIGH, 0x42268008);
   //setDestinationAddress(0x00, 0xFFFF);
- // exitCommandMode();
+  //exitCommandMode();
 
   flashData= *(uint64_t *)XBEE_SERIAL_LOW_ADDRESS; //Store serial low number from flash memory
   uint64ToUint8Array(flashData,  XBeeData.myAddress); // Convert Data to Array

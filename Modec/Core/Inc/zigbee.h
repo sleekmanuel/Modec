@@ -30,7 +30,8 @@ int setParameter(const char *at_command);
 void SleepMode(uint8_t Level);
 void RQSleepMode();
 int XBee_NodeDiscovery(void);
-void FactoryReset(void);
+void factoryReset(void);
+int writeCommand(void);
 void exitCommandMode(void);
 
 
