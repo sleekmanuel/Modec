@@ -193,13 +193,13 @@ int main(void)
    .........................................*/
 //
   enterCommandMode();
-  //requestParameter("ATdb\r", serialLowBuffer, sizeof(serialLowBuffer));
-  //setParameter("ATSM1\r");
+  requestParameter("ATdb\r", serialLowBuffer, sizeof(serialLowBuffer));
+  //setParameter("ATNI MODEC\r");
   //setParameter("ATID 1221\r");
   //setParameter("ATNJFF\r");
   //setParameter("ATSC0010\r");
  // writeCommand();
-  XBee_NodeDiscovery();
+  //XBee_NodeDiscovery();
   //factoryReset();
   //setDestinationAddress(ADDRESS_HIGH, 0x42268008);
   //setDestinationAddress(0x00, 0xFFFF);
